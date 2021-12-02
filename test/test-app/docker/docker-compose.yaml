@@ -1,0 +1,93 @@
+version: "3.8"
+services:
+  database:
+    image: postgres:13.2-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+    ports:
+      - 5432:5432
+
+  odd-test-app:
+    image: opendatadiscovery/traces-test-app:latest
+    restart: always
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://database:5432/${POSTGRES_DATABASE}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafkainstance:29092
+      - DYNAMODB_ENDPOINT=http://dynalite:4567
+      - DYNAMODB_TABLENAME=clients
+      - DYNAMODB_ACCESSKEYID=dummy
+      - DYNAMODB_SECRETACCESSKEY=dummy
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://collector:4317
+      - OTEL_INSTRUMENTATION_COMMON_DB_STATEMENT_SANITIZER_ENABLED=false
+      - OTEL_SERVICE_NAME=odd-test-app
+      - OTEL_RESOURCE_ATTRIBUTES=service.version=0.1-SNAPSHOT,kafka.bootstrap.servers=kafkainstance:29092
+    depends_on:
+      - database
+      - collector
+      - dynalite
+    ports:
+      - 8080:8080
+
+  kafkainstance:
+    image: confluentinc/cp-kafka:5.2.4
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9997:9997
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafkainstance:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.2.4
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+
+  dynalite:
+    image: quay.io/testcontainers/dynalite:v1.2.1-1
+
+  collector:
+    depends_on:
+      - traces-gateway
+    image: otel/opentelemetry-collector:0.40.0
+    command: ["--config=/etc/otel.yaml"]
+    volumes:
+      - ./otel.yaml:/etc/otel.yaml
+
+  traces-gateway:
+    depends_on:
+      - redis
+    image: opendatadiscovery/odd-traces-gateway:latest
+    environment:
+      - APP_DOCKER_ENABLED=true
+      - APP_DOCKER_HOST=unix:///var/run/docker.sock
+      - SPRING_REDIS_DATABASE=0
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 8081:8080
+
+  redis:
+    image: redis
+
+  cli:
+    depends_on:
+      - traces-gateway
+    image: znly/grpc_cli
+    command: ["ls", "traces-gateway:9090"]

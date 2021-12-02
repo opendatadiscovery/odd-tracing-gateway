@@ -1,0 +1,116 @@
+plugins {
+    id 'checkstyle'
+    id 'org.springframework.boot' version '2.6.0'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'com.google.cloud.tools.jib' version '3.1.4'
+    id 'com.google.protobuf' version '0.8.18'
+}
+
+apply plugin: 'java'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+group = 'org.opendatadiscovery'
+version = "${version != 'unspecified' ? version : '0.0.1-SNAPSHOT'}"
+
+sourceCompatibility = '14'
+
+checkstyle {
+    configFile = project(':').file('config/checkstyle/checkstyle.xml')
+    configProperties = ["suppressionFile": project(':').file('config/checkstyle/suppressions.xml')]
+    ignoreFailures = false
+    maxWarnings = 0
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-webflux"
+    implementation "org.springframework.boot:spring-boot-starter-actuator"
+    implementation "org.springframework.boot:spring-boot-starter-data-redis-reactive"
+    implementation "com.github.jsqlparser:jsqlparser:4.2"
+    implementation "org.opendatadiscovery:oddrn-generator-java:0.1.2"
+    implementation "org.opendatadiscovery:adapter-contract-server:0.1.3"
+    implementation "com.github.docker-java:docker-java-core:3.2.12"
+    implementation "com.github.docker-java:docker-java-transport-zerodep:3.2.12"
+    implementation 'io.fabric8:kubernetes-client:5.10.1'
+
+    protobuf ("io.opentelemetry:opentelemetry-proto:0.17.1") {
+        transitive = false
+    }
+
+    implementation "com.salesforce.servicelibs:reactor-grpc-stub:1.2.3"
+    implementation 'net.devh:grpc-server-spring-boot-starter:2.12.0.RELEASE'
+
+    compileOnly "org.projectlombok:lombok:$lombokVersion"
+    annotationProcessor "org.projectlombok:lombok:$lombokVersion"
+
+    implementation "javax.validation:validation-api:$validationApiVersion"
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+        exclude group: 'junit', module: 'junit'
+    }
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion"
+
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion"
+
+    testCompileOnly "org.projectlombok:lombok:$lombokVersion"
+    testAnnotationProcessor "org.projectlombok:lombok:$lombokVersion"
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:${protocVersion}" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
+        reactor {
+            artifact = "com.salesforce.servicelibs:reactor-grpc:1.2.3"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+            reactor {}
+        }
+    }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir '${buildDir}/proto'
+        }
+        java {
+            srcDir 'src/main/java'
+            srcDir "$buildDir/generated/source/proto/main/grpc"
+            srcDir "$buildDir/generated/source/proto/main/java"
+            srcDir "$buildDir/generated/source/proto/main/reactor"
+        }
+    }
+}
+
+
+jib {
+    from {
+        image = 'openjdk:17-alpine'
+    }
+    to {
+        image = 'opendatadiscovery/odd-traces-gateway'
+        tags = ['latest', project.version]
+    }
+    container {
+        creationTime = 'USE_CURRENT_TIMESTAMP'
+        appRoot = '/app'
+        jvmFlags = ['-Xms1G', '-Xmx1G']
+        ports = ['8080', '9090']
+        workingDirectory = '/app'
+    }
+    allowInsecureRegistries = false
+}
+
+test {
+    useJUnitPlatform()
+    testLogging.showStandardStreams = true
+}
