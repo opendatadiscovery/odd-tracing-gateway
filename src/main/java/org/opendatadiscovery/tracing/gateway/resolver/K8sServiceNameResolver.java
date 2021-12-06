@@ -2,7 +2,6 @@ package org.opendatadiscovery.tracing.gateway.resolver;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
-import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -104,11 +103,13 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
             for (final Container container : pod.getSpec().getContainers()) {
                 final ContainerStatus containerStatus = statuses.get(container.getName());
                 if (containerStatus != null && containerStatus.getContainerID().equals(containerId)) {
+                    log.info("image name: {}", container.getImage());
                     return Optional.of(container.getImage());
                 }
             }
         }
 
+        log.info("container id {} not found", containerId);
         return Optional.empty();
     }
 

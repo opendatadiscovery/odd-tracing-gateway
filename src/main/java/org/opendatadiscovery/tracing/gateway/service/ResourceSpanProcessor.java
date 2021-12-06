@@ -68,6 +68,7 @@ public class ResourceSpanProcessor {
             final Optional<NameOddrn> resolved = nameResolver.resolve(keyValueMap);
             if (resolved.isPresent()) {
                 serviceName = resolved.get();
+                break;
             }
         }
 
