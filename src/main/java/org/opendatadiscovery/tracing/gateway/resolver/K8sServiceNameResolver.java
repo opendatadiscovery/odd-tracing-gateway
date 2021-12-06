@@ -82,6 +82,7 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
     }
 
     private Optional<String> resolveClient(final String podName, final String containerId) {
+        log.info("namespaces: {}", this.namespaces);
         for (final String namespace : this.namespaces) {
             final Pod pod = client.pods().inNamespace(namespace).withName(podName).get();
 
