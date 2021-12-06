@@ -9,6 +9,7 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.NamedMicroservicePath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.tracing.gateway.config.AppProperties;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -23,14 +24,17 @@ public class DefaultServiceNameResolver implements ServiceNameResolver {
     }
 
     @Override
-    public Optional<String> resolve(final Map<String, AnyValue> resourceMap) {
+    public Optional<NameOddrn> resolve(final Map<String, AnyValue> resourceMap) {
         return Optional.ofNullable(resourceMap.get("service.name"))
             .map(n -> NamedMicroservicePath.builder().name(n.getStringValue()).build())
             .map(this::serialize);
     }
 
     @SneakyThrows
-    private String serialize(final OddrnPath path) {
-        return generator.generate(path, "name");
+    private NameOddrn serialize(final NamedMicroservicePath path) {
+        return NameOddrn.builder()
+            .name(path.getName())
+            .oddrn(generator.generate(path, "name"))
+            .build();
     }
 }
