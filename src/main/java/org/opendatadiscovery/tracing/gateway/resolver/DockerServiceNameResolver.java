@@ -18,6 +18,7 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.DockerMicroservicePath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.tracing.gateway.config.DockerProperties;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -58,8 +59,8 @@ public class DockerServiceNameResolver implements ServiceNameResolver {
     }
 
     @Override
-    public Optional<String> resolve(final Map<String, AnyValue> resourceMap) {
-        final Optional<String> resolved =
+    public Optional<NameOddrn> resolve(final Map<String, AnyValue> resourceMap) {
+        final Optional<NameOddrn> resolved =
             Optional.ofNullable(resourceMap.get("container.id")).flatMap(id -> resolve(id.getStringValue()))
                 .map(image -> DockerMicroservicePath.builder().image(image).build())
                 .map(this::serialize);
@@ -79,7 +80,10 @@ public class DockerServiceNameResolver implements ServiceNameResolver {
     }
 
     @SneakyThrows
-    private String serialize(final OddrnPath path) {
-        return generator.generate(path, "image");
+    private NameOddrn serialize(final DockerMicroservicePath path) {
+        return NameOddrn.builder()
+            .name(path.getImage())
+            .oddrn(generator.generate(path, "image"))
+            .build();
     }
 }
