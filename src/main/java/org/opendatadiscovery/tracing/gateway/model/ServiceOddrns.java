@@ -10,6 +10,8 @@ import lombok.Data;
 @Builder(toBuilder = true)
 public class ServiceOddrns {
     @Builder.Default
+    private final String oddrn = "";
+    @Builder.Default
     private final String name = "";
     @Builder.Default
     private final Instant updatedAt = Instant.now();

@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.DockerMicroservicePath;
-import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.tracing.gateway.config.K8sProperties;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -53,7 +53,7 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
     }
 
     @Override
-    public Optional<String> resolve(final Map<String, AnyValue> resourceMap) {
+    public Optional<NameOddrn> resolve(final Map<String, AnyValue> resourceMap) {
         final Optional<AnyValue> hostName = Optional.ofNullable(resourceMap.get("host.name"));
         final Optional<AnyValue> containerId = Optional.ofNullable(resourceMap.get("container.id"));
         return hostName.flatMap(h -> containerId
@@ -61,7 +61,7 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
         ).flatMap(this::resolve).map(this::serialize);
     }
 
-    private Optional<OddrnPath> resolve(final Tuple2<String, String> nameAndId) {
+    private Optional<DockerMicroservicePath> resolve(final Tuple2<String, String> nameAndId) {
         return Optional.ofNullable(
             cache.computeIfAbsent(nameAndId,
                 (id) -> resolveClient(nameAndId.getT1(), nameAndId.getT2()).orElse(null)
@@ -94,7 +94,10 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
     }
 
     @SneakyThrows
-    private String serialize(final OddrnPath path) {
-        return generator.generate(path, "image");
+    private NameOddrn serialize(final DockerMicroservicePath path) {
+        return NameOddrn.builder()
+            .name(path.getImage())
+            .oddrn(generator.generate(path, "image"))
+            .build();
     }
 }
