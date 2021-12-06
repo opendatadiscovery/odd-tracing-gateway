@@ -75,6 +75,8 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
         for (final String namespace : this.namespaces) {
             final Pod pod = client.pods().inNamespace(namespace).withName(podName).get();
 
+            if (pod == null) continue;
+
             final Map<String, ContainerStatus> statuses = pod.getStatus().getContainerStatuses().stream().collect(
                 Collectors.toMap(
                     ContainerStatus::getName,
