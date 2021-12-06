@@ -42,7 +42,7 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
 
         if (properties.getNamespaces() == null || properties.getNamespaces().isEmpty()) {
             this.namespaces = this.client.namespaces().list().getItems().stream()
-                .map(HasMetadata::getFullResourceName)
+                .map(n -> n.getMetadata().getName())
                 .collect(Collectors.toList());
         } else {
             this.namespaces = properties.getNamespaces();
