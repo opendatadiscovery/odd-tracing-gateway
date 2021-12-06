@@ -27,8 +27,8 @@ public class SqlParser {
         // with\s*([0-9A-Za-z_\"]+) as materialized\s*\(
         /* as materialized ( */
         return statement.replaceAll(
-            "(with|WITH|With)\\s+([a-zA-Z0-9_\"]+)\\s+(as|AS) (materialized|MATERIALIZED)\\s*\\(",
-            "with $2 AS ("
+            "(,|with|WITH|With)\\s+([a-zA-Z0-9_\"]+)\\s+(as|AS) (materialized|MATERIALIZED)\\s*\\(",
+            "$1 $2 AS ("
         ).replaceAll(
             "([a-zA-Z0-9_\"\\.]+)\\(([a-zA-Z0-9_\"\\.]+)\\.\\*\\)",
             "$1($2.\"ALL_COLUMNS_WILDCARD\")"

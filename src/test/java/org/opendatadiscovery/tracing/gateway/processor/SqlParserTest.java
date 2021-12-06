@@ -171,7 +171,8 @@ public class SqlParserTest {
                     .build()
             ),
             compare(
-                "WITH subquery AS MATERIALIZED (SELECT id FROM table1), subquery2 AS (SELECT id FROM table2) "
+                "WITH subquery AS MATERIALIZED (SELECT id FROM table1)"
+                    + ", subquery2 AS MATERIALIZED (SELECT id FROM table2) "
                     + "SELECT json_agg(subquery.*) as name FROM subquery",
                 SqlStatementInfo.builder()
                     .output(Set.of())
