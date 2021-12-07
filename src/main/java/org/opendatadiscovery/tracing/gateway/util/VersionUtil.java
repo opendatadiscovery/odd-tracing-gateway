@@ -8,7 +8,7 @@ public class VersionUtil {
         if (pos > 0) {
             return NameOddrn.builder()
                 .name(name.substring(0, pos))
-                .version(name.substring(pos))
+                .version(name.substring(pos + 1))
                 .build();
         } else {
             return NameOddrn.builder()
