@@ -16,12 +16,13 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.DockerMicroservicePath;
-import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.tracing.gateway.config.DockerProperties;
 import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+
+import static org.opendatadiscovery.tracing.gateway.util.VersionUtil.parseName;
 
 @Component
 @Slf4j
@@ -62,7 +63,6 @@ public class DockerServiceNameResolver implements ServiceNameResolver {
     public Optional<NameOddrn> resolve(final Map<String, AnyValue> resourceMap) {
         final Optional<NameOddrn> resolved =
             Optional.ofNullable(resourceMap.get("container.id")).flatMap(id -> resolve(id.getStringValue()))
-                .map(image -> DockerMicroservicePath.builder().image(image).build())
                 .map(this::serialize);
         log.info("Resolved: {}", resolved);
         return resolved;
@@ -80,10 +80,17 @@ public class DockerServiceNameResolver implements ServiceNameResolver {
     }
 
     @SneakyThrows
-    private NameOddrn serialize(final DockerMicroservicePath path) {
-        return NameOddrn.builder()
-            .name(path.getImage())
-            .oddrn(generator.generate(path, "image"))
+    private NameOddrn serialize(final String image) {
+        final NameOddrn name = parseName(
+            image
+        );
+        return name.toBuilder()
+            .oddrn(
+                generator.generate(
+                    DockerMicroservicePath.builder().image(name.getName()).build(),
+                    "image"
+                )
+            )
             .build();
     }
 }

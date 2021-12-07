@@ -92,7 +92,15 @@ public class ResourceSpanProcessor {
                     .toBuilder()
                     .oddrn(service.getOddrn())
                     .name(service.getName())
-                    .metadata(AnyValueUtil.toStringMap(keyValue))
+                    .metadata(
+                        AnyValueUtil.toStringMap(
+                            keyValue,
+                            Map.of(
+                                "service.version",
+                                AnyValue.newBuilder().setStringValue(service.getVersion()).build()
+                            )
+                        )
+                    )
                     .build();
 
                 log.info("oddrns: {}", oddrns);
