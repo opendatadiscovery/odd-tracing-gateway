@@ -1,6 +1,7 @@
 package org.opendatadiscovery.tracing.gateway.db;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
@@ -71,6 +72,7 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
     private final Set<Table> inputTables = new HashSet<>();
     private final Set<Table> outputTables = new HashSet<>();
     private final Set<String> subQueries = new HashSet<>();
+    private final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
 
     public Set<Table> getInputTables() {
         return inputTables;
@@ -98,15 +100,18 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
 
     @Override
     public void visit(final Delete delete) {
-        if (delete.getWithItemsList() != null) {
-            for (final WithItem withItem : delete.getWithItemsList()) {
-                withItem.accept(this);
+        withItemList(delete.getWithItemsList());
+
+        if (delete.getUsingList() != null) {
+            for (final Table using : delete.getUsingList()) {
+                visit(using);
             }
         }
+
         if (delete.getWhere() != null) {
-            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
             delete.getWhere().accept(expressionVisitor);
         }
+
         if (delete.getJoins() != null) {
             for (final Join join : delete.getJoins()) {
                 if (join.getRightItem() != null) {
@@ -114,30 +119,38 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
                 }
             }
         }
+
         this.outputTables.add(delete.getTable());
     }
 
     @Override
     public void visit(final Update update) {
-        if (update.getWithItemsList() != null) {
-            for (final WithItem withItem : update.getWithItemsList()) {
-                withItem.accept(this);
-            }
-        }
+        withItemList(update.getWithItemsList());
+
         if (update.getWhere() != null) {
-            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
             update.getWhere().accept(expressionVisitor);
         }
+
+        if (update.getFromItem() != null) {
+            update.getFromItem().accept(this);
+        }
+
         if (update.getUpdateSets() != null) {
             for (final UpdateSet updateSet : update.getUpdateSets()) {
                 if (updateSet.getExpressions() != null) {
                     for (final Expression expression : updateSet.getExpressions()) {
-                        final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
                         expression.accept(expressionVisitor);
                     }
                 }
             }
         }
+
+        if (update.getStartJoins() != null) {
+            for (final Join join : update.getStartJoins()) {
+                join.getRightItem().accept(this);
+            }
+        }
+
         if (update.getJoins() != null) {
             for (final Join join : update.getJoins()) {
                 if (join.getRightItem() != null) {
@@ -145,21 +158,42 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
                 }
             }
         }
+
         this.outputTables.add(update.getTable());
     }
 
     @Override
     public void visit(final Insert insert) {
-        if (insert.getWithItemsList() != null) {
-            for (final WithItem withItem : insert.getWithItemsList()) {
-                withItem.accept(this);
-            }
+        withItemList(insert.getWithItemsList());
+
+        if (insert.getSelect() != null) {
+            insert.getSelect().accept(this);
         }
+
+        if (insert.getItemsList() != null) {
+            insert.getItemsList().accept(expressionVisitor);
+        }
+
+        if (insert.getReturningExpressionList() != null || insert.isReturningAllColumns()) {
+            this.inputTables.add(insert.getTable());
+        }
+
         this.outputTables.add(insert.getTable());
     }
 
     @Override
     public void visit(final Replace replace) {
+        if (replace.getExpressions() != null) {
+            for (final Expression expression : replace.getExpressions()) {
+                expression.accept(expressionVisitor);
+            }
+        }
+
+        if (replace.getItemsList() != null) {
+            replace.getItemsList().accept(expressionVisitor);
+        }
+
+        this.outputTables.add(replace.getTable());
     }
 
     @Override
@@ -221,25 +255,28 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
     @Override
     public void visit(final Merge merge) {
         this.outputTables.add(merge.getTable());
+        if (merge.getUsingTable() != null) {
+            merge.getUsingTable().accept(this);
+        } else if (merge.getUsingSelect() != null) {
+            merge.getUsingSelect().accept((FromItemVisitor) this);
+        }
     }
 
     @Override
     public void visit(final Select select) {
+        withItemList(select.getWithItemsList());
         select.getSelectBody().accept(this);
-        if (select.getWithItemsList() != null) {
-            for (final WithItem withItem : select.getWithItemsList()) {
-                subQueries.add(withItem.getName());
-                inputTables.stream()
-                    .filter(s -> s.getFullyQualifiedName().equals(withItem.getName()))
-                    .findFirst().ifPresent(inputTables::remove);
-                withItem.accept(this);
-            }
-        }
     }
 
     @Override
     public void visit(final Upsert upsert) {
         this.outputTables.add(upsert.getTable());
+        if (upsert.getItemsList() != null) {
+            upsert.getItemsList().accept(expressionVisitor);
+        }
+        if (upsert.getSelect() != null) {
+            visit(upsert.getSelect());
+        }
     }
 
     @Override
@@ -248,6 +285,9 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
 
     @Override
     public void visit(final Block block) {
+        if (block.getStatements() != null) {
+            visit(block.getStatements());
+        }
     }
 
     @Override
@@ -258,14 +298,30 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
                 selectItem.accept(this);
             }
         }
-        if (plainSelect.getWhere() != null) {
-            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
-            plainSelect.getWhere().accept(expressionVisitor);
+
+        if (plainSelect.getFromItem() != null) {
+            plainSelect.getFromItem().accept(this);
         }
+
         if (plainSelect.getJoins() != null) {
             for (final Join join : plainSelect.getJoins()) {
                 join.getRightItem().accept(this);
             }
+        }
+
+        if (plainSelect.getWhere() != null) {
+            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
+            plainSelect.getWhere().accept(expressionVisitor);
+        }
+
+        if (plainSelect.getHaving() != null) {
+            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
+            plainSelect.getHaving().accept(expressionVisitor);
+        }
+
+        if (plainSelect.getOracleHierarchical() != null) {
+            final SqlExpressionVisitor expressionVisitor = new SqlExpressionVisitor(this);
+            plainSelect.getOracleHierarchical().accept(expressionVisitor);
         }
     }
 
@@ -292,6 +348,7 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
 
     @Override
     public void visit(final ValuesStatement values) {
+        values.getExpressions().accept(expressionVisitor);
     }
 
     @Override
@@ -299,7 +356,8 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
     }
 
     @Override
-    public void visit(final ExplainStatement statement) {
+    public void visit(final ExplainStatement explain) {
+        explain.getStatement().accept(this);
     }
 
     @Override
@@ -353,13 +411,14 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
     @Override
     public void visit(final Table tableName) {
         final String name = tableName.getFullyQualifiedName();
-        if (name != null && !subQueries.contains(name)) {
+        if (name != null && !subQueries.contains(name.toLowerCase())) {
             this.inputTables.add(tableName);
         }
     }
 
     @Override
     public void visit(final SubSelect subSelect) {
+        withItemList(subSelect.getWithItemsList());
         if (subSelect.getSelectBody() != null) {
             subSelect.getSelectBody().accept(this);
         }
@@ -367,10 +426,15 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
 
     @Override
     public void visit(final SubJoin subjoin) {
+        subjoin.getLeft().accept(this);
+        for (final Join join : subjoin.getJoinList()) {
+            join.getRightItem().accept(this);
+        }
     }
 
     @Override
     public void visit(final LateralSubSelect lateralSubSelect) {
+        lateralSubSelect.getSubSelect().getSelectBody().accept(this);
     }
 
     @Override
@@ -383,6 +447,7 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
 
     @Override
     public void visit(final ParenthesisFromItem item) {
+        item.getFromItem().accept(this);
     }
 
     @Override
@@ -399,6 +464,18 @@ public class SqlParserVisitor implements StatementVisitor, SelectVisitor, FromIt
             final Expression expression = selectExpressionItem.getExpression();
             if (expression instanceof SubSelect) {
                 this.visit((SubSelect) expression);
+            }
+        }
+    }
+
+    public void withItemList(final List<WithItem> withItemList) {
+        if (withItemList != null) {
+            for (final WithItem withItem : withItemList) {
+                subQueries.add(withItem.getName().toLowerCase());
+                inputTables.stream()
+                    .filter(s -> s.getFullyQualifiedName().equals(withItem.getName()))
+                    .findFirst().ifPresent(inputTables::remove);
+                withItem.accept(this);
             }
         }
     }
