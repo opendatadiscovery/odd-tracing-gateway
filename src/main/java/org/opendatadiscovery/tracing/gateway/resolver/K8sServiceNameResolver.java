@@ -23,6 +23,8 @@ import org.springframework.stereotype.Component;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import static org.opendatadiscovery.tracing.gateway.util.VersionUtil.parseName;
+
 @Component
 @ConditionalOnProperty(prefix = "app.k8s", name = "enabled", havingValue = "true")
 @Slf4j
@@ -62,7 +64,7 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
         ).flatMap(this::resolve).map(this::serialize);
     }
 
-    private Optional<DockerMicroservicePath> resolve(final Tuple2<String, String> nameAndId) {
+    private Optional<String> resolve(final Tuple2<String, String> nameAndId) {
         return Optional.ofNullable(
             cache.computeIfAbsent(nameAndId,
                 (id) -> {
@@ -75,8 +77,6 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
                     }
                 }
             )
-        ).map(image ->
-            DockerMicroservicePath.builder().image(image).build()
         );
     }
 
@@ -114,10 +114,17 @@ public class K8sServiceNameResolver implements ServiceNameResolver {
     }
 
     @SneakyThrows
-    private NameOddrn serialize(final DockerMicroservicePath path) {
-        return NameOddrn.builder()
-            .name(path.getImage())
-            .oddrn(generator.generate(path, "image"))
+    private NameOddrn serialize(final String image) {
+        final NameOddrn name = parseName(
+            image
+        );
+        return name.toBuilder()
+            .oddrn(
+                generator.generate(
+                    DockerMicroservicePath.builder().image(name.getName()).build(),
+                    "image"
+                )
+            )
             .build();
     }
 }

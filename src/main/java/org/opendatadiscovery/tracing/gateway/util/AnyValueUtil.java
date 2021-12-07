@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AnyValueUtil {
     public static ObjectMapper mapper;
@@ -30,8 +31,11 @@ public class AnyValueUtil {
         );
     }
 
-    public static Map<String, String> toStringMap(final Map<String, AnyValue> map) {
-        return map.entrySet().stream().collect(
+    public static Map<String, String> toStringMap(final Map<String, AnyValue> map, final Map<String, AnyValue> addon) {
+        return Stream.concat(
+            map.entrySet().stream(),
+            addon.entrySet().stream()
+        ).collect(
             Collectors.toMap(
                 Map.Entry::getKey,
                 e -> toString(e.getValue())
