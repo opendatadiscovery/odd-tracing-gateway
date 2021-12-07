@@ -14,6 +14,7 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.MysqlPath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.oddrn.model.PostgreSqlPath;
+import org.opendatadiscovery.tracing.gateway.db.PostgreSqlParser;
 import org.opendatadiscovery.tracing.gateway.db.SqlParser;
 import org.opendatadiscovery.tracing.gateway.db.SqlStatementInfo;
 import org.opendatadiscovery.tracing.gateway.db.TableName;
@@ -26,7 +27,14 @@ import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
 @AllArgsConstructor
 public class JdbcSpanProcessor implements SpanProcessor {
 
+    private static final String POSTGRESQL = "postgresql";
+    private static final String MYSQL = "mysql";
+
     private final Generator generator;
+    private final SqlParser defaultSqlParser = new SqlParser();
+    private final Map<String, SqlParser> sqlParsers = Map.of(
+        POSTGRESQL, new PostgreSqlParser()
+    );
 
     @Override
     public List<String> libraries() {
@@ -40,8 +48,11 @@ public class JdbcSpanProcessor implements SpanProcessor {
         for (final Span span : spans) {
             final Map<String, AnyValue> attributes = toMap(span.getAttributesList());
 
+            final String system = Optional.ofNullable(attributes.get("db.system"))
+                .map(AnyValue::getStringValue).orElseThrow();
+
             final Optional<OddrnPath> prefix = prefix(
-                attributes.get("db.system"),
+                system,
                 attributes.get("net.peer.name").getStringValue(),
                 attributes.get("db.name").getStringValue()
             );
@@ -49,7 +60,8 @@ public class JdbcSpanProcessor implements SpanProcessor {
             final AnyValue statement = attributes.get("db.statement");
 
             if (statement != null && !statement.getStringValue().isEmpty() && prefix.isPresent()) {
-                final SqlStatementInfo statementInfo = SqlParser.parse(statement.getStringValue());
+                final SqlParser sqlParser = sqlParsers.getOrDefault(system, defaultSqlParser);
+                final SqlStatementInfo statementInfo = sqlParser.parse(statement.getStringValue());
                 inputs.addAll(
                     statementInfo.getInput().stream()
                         .map(t -> generate(prefix.get(), t))
@@ -90,16 +102,15 @@ public class JdbcSpanProcessor implements SpanProcessor {
         }
     }
 
-    private Optional<OddrnPath> prefix(final AnyValue systemValue, final String host, final String database) {
-        if (systemValue != null && !systemValue.getStringValue().isEmpty()) {
-            final String system = systemValue.getStringValue();
+    private Optional<OddrnPath> prefix(final String system, final String host, final String database) {
+        if (system != null && !system.isEmpty()) {
             return switch (system) {
-                case "postgresql" -> Optional.of(PostgreSqlPath.builder()
+                case POSTGRESQL -> Optional.of(PostgreSqlPath.builder()
                     .host(host)
                     .database(database)
                     .build()
                 );
-                case "mysql" -> Optional.of(MysqlPath.builder()
+                case MYSQL -> Optional.of(MysqlPath.builder()
                     .host(host)
                     .database(database)
                     .build()

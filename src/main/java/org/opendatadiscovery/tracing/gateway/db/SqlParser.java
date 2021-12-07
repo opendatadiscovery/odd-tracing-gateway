@@ -1,15 +1,19 @@
 package org.opendatadiscovery.tracing.gateway.db;
 
+import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.Statement;
+import reactor.util.function.Tuple2;
 
 public class SqlParser {
+
     @SneakyThrows
-    public static SqlStatementInfo parse(final String statement) {
+    public SqlStatementInfo parse(final String statement) {
         final Statement stmt = CCJSqlParserUtil.parse(
-            removeMaterialized(statement)
+            applyHooks(statement)
         );
         final SqlParserVisitor visitor = new SqlParserVisitor();
         stmt.accept(visitor);
@@ -23,15 +27,15 @@ public class SqlParser {
         );
     }
 
-    public static String removeMaterialized(final String statement) {
-        // with\s*([0-9A-Za-z_\"]+) as materialized\s*\(
-        /* as materialized ( */
-        return statement.replaceAll(
-            "(,|with|WITH|With)\\s+([a-zA-Z0-9_\"]+)\\s+(as|AS) (materialized|MATERIALIZED)\\s*\\(",
-            "$1 $2 AS ("
-        ).replaceAll(
-            "([a-zA-Z0-9_\"\\.]+)\\(([a-zA-Z0-9_\"\\.]+)\\.\\*\\)",
-            "$1($2.\"ALL_COLUMNS_WILDCARD\")"
-        );
+    public String applyHooks(final String statement) {
+        String result = statement;
+        for (final Tuple2<Pattern, String> entry : hooks()) {
+            result = entry.getT1().matcher(result).replaceAll(entry.getT2());
+        }
+        return result;
+    }
+
+    public List<Tuple2<Pattern, String>> hooks() {
+        return List.of();
     }
 }

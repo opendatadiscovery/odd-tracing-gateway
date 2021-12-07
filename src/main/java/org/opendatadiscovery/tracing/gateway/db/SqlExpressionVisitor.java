@@ -4,6 +4,7 @@ import net.sf.jsqlparser.expression.AnalyticExpression;
 import net.sf.jsqlparser.expression.AnyComparisonExpression;
 import net.sf.jsqlparser.expression.ArrayConstructor;
 import net.sf.jsqlparser.expression.ArrayExpression;
+import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.CaseExpression;
 import net.sf.jsqlparser.expression.CastExpression;
 import net.sf.jsqlparser.expression.CollateExpression;
@@ -22,6 +23,7 @@ import net.sf.jsqlparser.expression.JdbcParameter;
 import net.sf.jsqlparser.expression.JsonAggregateFunction;
 import net.sf.jsqlparser.expression.JsonExpression;
 import net.sf.jsqlparser.expression.JsonFunction;
+import net.sf.jsqlparser.expression.JsonFunctionExpression;
 import net.sf.jsqlparser.expression.KeepExpression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.MySQLGroupConcat;
@@ -84,6 +86,7 @@ import net.sf.jsqlparser.expression.operators.relational.RegExpMatchOperator;
 import net.sf.jsqlparser.expression.operators.relational.RegExpMySQLOperator;
 import net.sf.jsqlparser.expression.operators.relational.SimilarToExpression;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SubSelect;
 
 public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor {
@@ -95,10 +98,12 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final BitwiseRightShift shift) {
+        visitBinaryExpression(shift);
     }
 
     @Override
     public void visit(final BitwiseLeftShift shift) {
+        visitBinaryExpression(shift);
     }
 
     @Override
@@ -107,10 +112,22 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final Function function) {
+        if (function.getParameters() != null) {
+            function.getParameters().accept(this);
+        }
+        if (function.getKeep() != null) {
+            function.getKeep().accept(this);
+        }
+        if (function.getOrderByElements() != null) {
+            for (final OrderByElement orderByElement : function.getOrderByElements()) {
+                orderByElement.getExpression().accept(this);
+            }
+        }
     }
 
     @Override
-    public void visit(final SignedExpression signedExpression) {
+    public void visit(final SignedExpression expr) {
+        expr.getExpression().accept(this);
     }
 
     @Override
@@ -147,6 +164,7 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final Parenthesis parenthesis) {
+        parenthesis.getExpression().accept(this);
     }
 
     @Override
@@ -155,34 +173,42 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final Addition addition) {
+        visitBinaryExpression(addition);
     }
 
     @Override
     public void visit(final Division division) {
+        visitBinaryExpression(division);
     }
 
     @Override
     public void visit(final IntegerDivision division) {
+        visitBinaryExpression(division);
     }
 
     @Override
     public void visit(final Multiplication multiplication) {
+        visitBinaryExpression(multiplication);
     }
 
     @Override
     public void visit(final Subtraction subtraction) {
+        visitBinaryExpression(subtraction);
     }
 
     @Override
     public void visit(final AndExpression andExpression) {
+        visitBinaryExpression(andExpression);
     }
 
     @Override
     public void visit(final OrExpression orExpression) {
+        visitBinaryExpression(orExpression);
     }
 
     @Override
     public void visit(final XorExpression orExpression) {
+        visitBinaryExpression(orExpression);
     }
 
     @Override
@@ -200,32 +226,17 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final EqualsTo equalsTo) {
-        if (equalsTo.getLeftExpression() != null) {
-            equalsTo.getLeftExpression().accept(this);
-        }
-        if (equalsTo.getRightExpression() != null) {
-            equalsTo.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(equalsTo);
     }
 
     @Override
     public void visit(final GreaterThan greaterThan) {
-        if (greaterThan.getLeftExpression() != null) {
-            greaterThan.getLeftExpression().accept(this);
-        }
-        if (greaterThan.getRightExpression() != null) {
-            greaterThan.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(greaterThan);
     }
 
     @Override
     public void visit(final GreaterThanEquals greaterThanEquals) {
-        if (greaterThanEquals.getLeftExpression() != null) {
-            greaterThanEquals.getLeftExpression().accept(this);
-        }
-        if (greaterThanEquals.getRightExpression() != null) {
-            greaterThanEquals.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(greaterThanEquals);
     }
 
     @Override
@@ -234,7 +245,9 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
         if (inExpression.getRightExpression() != null) {
             inExpression.getRightExpression().accept(this);
         }
-        if (inExpression.getRightItemsList() != null) {
+        if (inExpression.getRightExpression() != null) {
+            inExpression.getRightItemsList().accept(this);
+        } else if (inExpression.getRightItemsList() != null) {
             inExpression.getRightItemsList().accept(this);
         }
     }
@@ -259,42 +272,22 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final LikeExpression likeExpression) {
-        if (likeExpression.getLeftExpression() != null) {
-            likeExpression.getLeftExpression().accept(this);
-        }
-        if (likeExpression.getRightExpression() != null) {
-            likeExpression.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(likeExpression);
     }
 
     @Override
     public void visit(final MinorThan minorThan) {
-        if (minorThan.getLeftExpression() != null) {
-            minorThan.getLeftExpression().accept(this);
-        }
-        if (minorThan.getRightExpression() != null) {
-            minorThan.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(minorThan);
     }
 
     @Override
     public void visit(final MinorThanEquals minorThanEquals) {
-        if (minorThanEquals.getLeftExpression() != null) {
-            minorThanEquals.getLeftExpression().accept(this);
-        }
-        if (minorThanEquals.getRightExpression() != null) {
-            minorThanEquals.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(minorThanEquals);
     }
 
     @Override
     public void visit(final NotEqualsTo notEqualsTo) {
-        if (notEqualsTo.getLeftExpression() != null) {
-            notEqualsTo.getLeftExpression().accept(this);
-        }
-        if (notEqualsTo.getRightExpression() != null) {
-            notEqualsTo.getRightExpression().accept(this);
-        }
+        visitBinaryExpression(notEqualsTo);
     }
 
     @Override
@@ -327,18 +320,29 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
     @Override
     public void visit(final MultiExpressionList multiExprList) {
         if (multiExprList.getExpressionLists() != null) {
-            for (final ExpressionList expressionList : multiExprList.getExpressionLists()) {
-                expressionList.accept(this);
+            for (final ExpressionList list : multiExprList.getExpressionLists()) {
+                visit(list);
             }
         }
     }
 
     @Override
-    public void visit(final CaseExpression caseExpression) {
+    public void visit(final CaseExpression expr) {
+        if (expr.getSwitchExpression() != null) {
+            expr.getSwitchExpression().accept(this);
+        }
+        for (final Expression x : expr.getWhenClauses()) {
+            x.accept(this);
+        }
+        if (expr.getElseExpression() != null) {
+            expr.getElseExpression().accept(this);
+        }
     }
 
     @Override
-    public void visit(final WhenClause whenClause) {
+    public void visit(final WhenClause expr) {
+        expr.getWhenExpression().accept(this);
+        expr.getThenExpression().accept(this);
     }
 
     @Override
@@ -354,38 +358,67 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final Concat concat) {
+        visitBinaryExpression(concat);
     }
 
     @Override
     public void visit(final Matches matches) {
+        visitBinaryExpression(matches);
     }
 
     @Override
     public void visit(final BitwiseAnd bitwiseAnd) {
+        visitBinaryExpression(bitwiseAnd);
     }
 
     @Override
     public void visit(final BitwiseOr bitwiseOr) {
+        visitBinaryExpression(bitwiseOr);
     }
 
     @Override
     public void visit(final BitwiseXor bitwiseXor) {
+        visitBinaryExpression(bitwiseXor);
     }
 
     @Override
     public void visit(final CastExpression cast) {
+        cast.getLeftExpression().accept(this);
     }
 
     @Override
     public void visit(final Modulo modulo) {
+        visitBinaryExpression(modulo);
     }
 
     @Override
-    public void visit(final AnalyticExpression aexpr) {
+    public void visit(final AnalyticExpression expr) {
+        if (expr.getExpression() != null) {
+            expr.getExpression().accept(this);
+        }
+        if (expr.getDefaultValue() != null) {
+            expr.getDefaultValue().accept(this);
+        }
+        if (expr.getOffset() != null) {
+            expr.getOffset().accept(this);
+        }
+        if (expr.getKeep() != null) {
+            expr.getKeep().accept(this);
+        }
+        for (final OrderByElement element : expr.getOrderByElements()) {
+            element.getExpression().accept(this);
+        }
+
+        if (expr.getWindowElement() != null) {
+            expr.getWindowElement().getRange().getStart().getExpression().accept(this);
+            expr.getWindowElement().getRange().getEnd().getExpression().accept(this);
+            expr.getWindowElement().getOffset().getExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(final ExtractExpression eexpr) {
+        eexpr.getExpression().accept(this);
     }
 
     @Override
@@ -394,22 +427,28 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final OracleHierarchicalExpression oexpr) {
+        oexpr.getConnectExpression().accept(this);
+        oexpr.getStartExpression().accept(this);
     }
 
     @Override
     public void visit(final RegExpMatchOperator rexpr) {
+        visitBinaryExpression(rexpr);
     }
 
     @Override
     public void visit(final JsonExpression jsonExpr) {
+        jsonExpr.getExpression().accept(this);
     }
 
     @Override
     public void visit(final JsonOperator jsonExpr) {
+        visitBinaryExpression(jsonExpr);
     }
 
     @Override
     public void visit(final RegExpMySQLOperator regExpMySQLOperator) {
+        visitBinaryExpression(regExpMySQLOperator);
     }
 
     @Override
@@ -422,22 +461,42 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final KeepExpression aexpr) {
+        for (final OrderByElement element : aexpr.getOrderByElements()) {
+            element.getExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(final MySQLGroupConcat groupConcat) {
+        for (final Expression expr : groupConcat.getExpressionList().getExpressions()) {
+            expr.accept(this);
+        }
+        if (groupConcat.getOrderByElements() != null) {
+            for (final OrderByElement element : groupConcat.getOrderByElements()) {
+                element.getExpression().accept(this);
+            }
+        }
     }
 
     @Override
     public void visit(final ValueListExpression valueList) {
+        for (final Expression expr : valueList.getExpressionList().getExpressions()) {
+            expr.accept(this);
+        }
     }
 
     @Override
     public void visit(final RowConstructor rowConstructor) {
+        if (rowConstructor.getColumnDefinitions().isEmpty()) {
+            for (final Expression expression : rowConstructor.getExprList().getExpressions()) {
+                expression.accept(this);
+            }
+        }
     }
 
     @Override
     public void visit(final RowGetExpression rowGetExpression) {
+        rowGetExpression.getExpression().accept(this);
     }
 
     @Override
@@ -454,6 +513,7 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final NotExpression exp) {
+        exp.getExpression().accept(this);
     }
 
     @Override
@@ -462,45 +522,86 @@ public class SqlExpressionVisitor implements ExpressionVisitor, ItemsListVisitor
 
     @Override
     public void visit(final CollateExpression exp) {
+        exp.getLeftExpression().accept(this);
     }
 
     @Override
     public void visit(final SimilarToExpression exp) {
+        visitBinaryExpression(exp);
     }
 
     @Override
-    public void visit(final ArrayExpression exp) {
+    public void visit(final ArrayExpression array) {
+        array.getObjExpression().accept(this);
+        if (array.getIndexExpression() != null) {
+            array.getIndexExpression().accept(this);
+        }
+        if (array.getStartIndexExpression() != null) {
+            array.getStartIndexExpression().accept(this);
+        }
+        if (array.getStopIndexExpression() != null) {
+            array.getStopIndexExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(final ArrayConstructor constructor) {
+        for (final Expression expression : constructor.getExpressions()) {
+            expression.accept(this);
+        }
     }
 
     @Override
     public void visit(final VariableAssignment assignment) {
+        assignment.getVariable().accept(this);
+        assignment.getExpression().accept(this);
     }
 
     @Override
     public void visit(final XMLSerializeExpr expr) {
+        expr.getExpression().accept(this);
+        for (final OrderByElement elm : expr.getOrderByElements()) {
+            elm.getExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(final TimezoneExpression expression) {
+        expression.getLeftExpression().accept(this);
     }
 
     @Override
     public void visit(final JsonAggregateFunction function) {
+        Expression expr = function.getExpression();
+        if (expr != null) {
+            expr.accept(this);
+        }
+
+        expr = function.getFilterExpression();
+        if (expr != null) {
+            expr.accept(this);
+        }
     }
 
     @Override
     public void visit(final JsonFunction function) {
+        for (final JsonFunctionExpression expr : function.getExpressions()) {
+            expr.getExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(final ConnectByRootOperator operator) {
+        operator.getColumn().accept(this);
     }
 
     @Override
     public void visit(final OracleNamedFunctionParameter parameter) {
+        parameter.getExpression().accept(this);
+    }
+
+    private void visitBinaryExpression(final BinaryExpression expr) {
+        expr.getLeftExpression().accept(this);
+        expr.getRightExpression().accept(this);
     }
 }

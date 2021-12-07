@@ -48,11 +48,16 @@ public class JdbcSpanProcessorTest {
         assertEquals(
             ServiceOddrns.builder()
                 .updatedAt(now)
+                .inputs(
+                    Set.of(
+                        "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
+                    )
+                )
                 .outputs(
                     Set.of(
                         "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
                     )
-                ).inputs(Set.of()).build(),
+                ).build(),
             oddrns
         );
     }
