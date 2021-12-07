@@ -31,7 +31,7 @@ public class AnyValueUtil {
         );
     }
 
-    public static Map<String, String> toStringMap(final Map<String, AnyValue> map, Map<String, AnyValue> addon) {
+    public static Map<String, String> toStringMap(final Map<String, AnyValue> map, final Map<String, AnyValue> addon) {
         return Stream.concat(
             map.entrySet().stream(),
             addon.entrySet().stream()
