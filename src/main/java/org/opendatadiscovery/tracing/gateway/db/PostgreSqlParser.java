@@ -26,7 +26,15 @@ public class PostgreSqlParser extends SqlParser {
                 "RETURNING $2"
             ),
             Tuples.of(
+                Pattern.compile("(on conflict.+)\\s+returning (.+)"),
+                "RETURNING $2"
+            ),
+            Tuples.of(
                 Pattern.compile("(ON CONFLICT.+)"),
+                ""
+            ),
+            Tuples.of(
+                Pattern.compile("(on conflict.+)"),
                 ""
             )
         );
