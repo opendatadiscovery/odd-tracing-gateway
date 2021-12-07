@@ -22,19 +22,11 @@ public class PostgreSqlParser extends SqlParser {
             ),
             // INSERT INTO table(columns) VALUES (values) ON CONFLICT DO -> INSERT INTO table(columns) VALUES (values);
             Tuples.of(
-                Pattern.compile("(ON CONFLICT.+)\\s+RETURNING (.+)"),
+                Pattern.compile("(ON CONFLICT.+)\\s+RETURNING (.+)", Pattern.CASE_INSENSITIVE),
                 "RETURNING $2"
             ),
             Tuples.of(
-                Pattern.compile("(on conflict.+)\\s+returning (.+)"),
-                "RETURNING $2"
-            ),
-            Tuples.of(
-                Pattern.compile("(ON CONFLICT.+)"),
-                ""
-            ),
-            Tuples.of(
-                Pattern.compile("(on conflict.+)"),
+                Pattern.compile("(ON CONFLICT.+)", Pattern.CASE_INSENSITIVE),
                 ""
             )
         );
