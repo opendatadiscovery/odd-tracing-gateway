@@ -11,6 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opendatadiscovery.adapter.contract.model.DataEntity;
 import org.opendatadiscovery.adapter.contract.model.DataEntityList;
+import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.adapter.contract.model.DataTransformer;
 import org.opendatadiscovery.adapter.contract.model.MetadataExtension;
 import org.opendatadiscovery.tracing.gateway.config.AppProperties;
@@ -35,6 +36,7 @@ public class ServiceMapper {
 
     public DataEntity map(final ServiceOddrns oddrns) {
         final DataEntity entity = new DataEntity();
+        entity.setType(DataEntityType.JOB);
         entity.setName(oddrns.getName());
         entity.setOddrn(oddrns.getOddrn());
         entity.setUpdatedAt(OffsetDateTime.ofInstant(oddrns.getUpdatedAt(), ZoneOffset.UTC));
