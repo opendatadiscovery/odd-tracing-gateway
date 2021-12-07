@@ -36,7 +36,7 @@ public class ServiceMapper {
 
     public DataEntity map(final ServiceOddrns oddrns) {
         final DataEntity entity = new DataEntity();
-        entity.setType(DataEntityType.JOB);
+        entity.setType(DataEntityType.MICROSERVICE);
         entity.setName(oddrns.getName());
         entity.setOddrn(oddrns.getOddrn());
         entity.setUpdatedAt(OffsetDateTime.ofInstant(oddrns.getUpdatedAt(), ZoneOffset.UTC));
