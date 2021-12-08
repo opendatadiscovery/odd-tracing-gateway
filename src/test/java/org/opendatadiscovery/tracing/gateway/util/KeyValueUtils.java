@@ -1,4 +1,4 @@
-package org.opendatadiscovery.tracing.gateway.processor;
+package org.opendatadiscovery.tracing.gateway.util;
 
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;

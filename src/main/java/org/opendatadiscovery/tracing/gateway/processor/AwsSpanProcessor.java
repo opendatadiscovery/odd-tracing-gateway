@@ -27,11 +27,8 @@ public class AwsSpanProcessor implements SpanProcessor {
     private final Generator generator;
 
     @Override
-    public List<String> libraries() {
-        return List.of(
-            "io.opentelemetry.aws-sdk-2.2",
-            "io.opentelemetry.aws-sdk-1.1"
-        );
+    public boolean accept(final String library) {
+        return library.startsWith("io.opentelemetry.aws-sdk");
     }
 
     @Override

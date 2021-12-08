@@ -21,15 +21,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
 
 @Service
 @Slf4j
 public class ResourceSpanProcessor {
-    private final Map<String, SpanProcessor> processors;
+    private final List<SpanProcessor> processors;
     private final List<ServiceNameResolver> nameResolvers;
     private final CacheRepository repository;
 
@@ -42,12 +40,7 @@ public class ResourceSpanProcessor {
         this.nameResolvers = nameResolvers.stream()
             .sorted(Comparator.comparingInt(ServiceNameResolver::priority))
             .collect(Collectors.toList());
-        this.processors = processorsList.stream()
-            .flatMap(p -> p.libraries().stream().map(l -> Tuples.of(l, p)))
-            .collect(Collectors.toMap(
-                Tuple2::getT1,
-                Tuple2::getT2
-            ));
+        this.processors = processorsList;
     }
 
     public Mono<Boolean> process(final List<ResourceSpans> spans) {
@@ -85,32 +78,34 @@ public class ResourceSpanProcessor {
                                  final Map<String, AnyValue> keyValue, final NameOddrn service) {
         final InstrumentationLibrary library = spans.getInstrumentationLibrary();
         log.info("library name: {}", library.getName());
+        Mono<Boolean> result = Mono.just(true);
         try {
-            final SpanProcessor spanProcessor = processors.get(library.getName());
-            if (spanProcessor != null) {
-                final ServiceOddrns oddrns = spanProcessor.process(spans.getSpansList(), keyValue)
-                    .toBuilder()
-                    .oddrn(service.getOddrn())
-                    .name(service.getName())
-                    .metadata(
-                        AnyValueUtil.toStringMap(
-                            keyValue,
-                            Map.of(
-                                "service.version",
-                                AnyValue.newBuilder().setStringValue(service.getVersion()).build()
+            for (final SpanProcessor spanProcessor : processors) {
+                if (spanProcessor.accept(library.getName())) {
+                    final ServiceOddrns oddrns = spanProcessor.process(spans.getSpansList(), keyValue)
+                        .toBuilder()
+                        .oddrn(service.getOddrn())
+                        .name(service.getName())
+                        .metadata(
+                            AnyValueUtil.toStringMap(
+                                keyValue,
+                                Map.of(
+                                    "service.version",
+                                    AnyValue.newBuilder().setStringValue(service.getVersion()).build()
+                                )
                             )
                         )
-                    )
-                    .build();
+                        .build();
 
-                log.info("oddrns: {}", oddrns);
-                return repository.add(oddrns).map(v -> true);
-            } else {
-                return Mono.just(true);
+                    log.info("oddrns: {}", oddrns);
+                    result = result.flatMap(
+                        t -> repository.add(oddrns).map(v -> true)
+                    );
+                }
             }
         } catch (Throwable e) {
             log.error("Error processing: ", e);
-            return Mono.just(true);
         }
+        return result;
     }
 }

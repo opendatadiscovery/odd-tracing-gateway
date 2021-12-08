@@ -1,13 +1,10 @@
-package org.opendatadiscovery.tracing.gateway.processor;
+package org.opendatadiscovery.tracing.gateway.db;
 
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
-import org.opendatadiscovery.tracing.gateway.db.PostgreSqlParser;
-import org.opendatadiscovery.tracing.gateway.db.SqlStatementInfo;
-import org.opendatadiscovery.tracing.gateway.db.TableName;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
