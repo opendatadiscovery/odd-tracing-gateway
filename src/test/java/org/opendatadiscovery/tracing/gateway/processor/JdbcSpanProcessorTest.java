@@ -11,8 +11,8 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.opendatadiscovery.tracing.gateway.processor.KeyValueUtils.withInt;
-import static org.opendatadiscovery.tracing.gateway.processor.KeyValueUtils.withString;
+import static org.opendatadiscovery.tracing.gateway.util.KeyValueUtils.withInt;
+import static org.opendatadiscovery.tracing.gateway.util.KeyValueUtils.withString;
 
 public class JdbcSpanProcessorTest {
     private final JdbcSpanProcessor processor = new JdbcSpanProcessor(new Generator());

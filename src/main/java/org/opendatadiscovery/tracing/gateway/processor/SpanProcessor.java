@@ -7,7 +7,7 @@ import java.util.Map;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
 public interface SpanProcessor {
-    List<String> libraries();
+    boolean accept(String library);
 
     ServiceOddrns process(List<Span> spans, Map<String, AnyValue> keyValue);
 }

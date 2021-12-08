@@ -37,8 +37,8 @@ public class JdbcSpanProcessor implements SpanProcessor {
     );
 
     @Override
-    public List<String> libraries() {
-        return List.of("io.opentelemetry.jdbc");
+    public boolean accept(final String library) {
+        return "io.opentelemetry.jdbc".equals(library);
     }
 
     @Override

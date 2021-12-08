@@ -1,4 +1,4 @@
-package org.opendatadiscovery.tracing.gateway.processor;
+package org.opendatadiscovery.tracing.gateway.db;
 
 import java.util.List;
 import java.util.Set;
