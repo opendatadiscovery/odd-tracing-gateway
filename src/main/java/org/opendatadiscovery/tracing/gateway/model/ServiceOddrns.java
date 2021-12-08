@@ -5,10 +5,13 @@ import java.util.Map;
 import java.util.Set;
 import lombok.Builder;
 import lombok.Data;
+import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 
 @Data
 @Builder(toBuilder = true)
 public class ServiceOddrns {
+    @Builder.Default
+    private final DataEntityType serviceType = DataEntityType.MICROSERVICE;
     @Builder.Default
     private final String oddrn = "";
     @Builder.Default

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opendatadiscovery.adapter.contract.model.DataEntity;
 import org.opendatadiscovery.adapter.contract.model.DataEntityList;
 import org.opendatadiscovery.adapter.contract.model.DataEntityType;
+import org.opendatadiscovery.adapter.contract.model.DataInput;
 import org.opendatadiscovery.adapter.contract.model.DataTransformer;
 import org.opendatadiscovery.adapter.contract.model.MetadataExtension;
 import org.opendatadiscovery.tracing.gateway.config.AppProperties;
@@ -36,7 +37,6 @@ public class ServiceMapper {
 
     public DataEntity map(final ServiceOddrns oddrns) {
         final DataEntity entity = new DataEntity();
-        entity.setType(DataEntityType.MICROSERVICE);
         entity.setName(oddrns.getName());
         entity.setOddrn(oddrns.getOddrn());
         entity.setUpdatedAt(OffsetDateTime.ofInstant(oddrns.getUpdatedAt(), ZoneOffset.UTC));
@@ -48,13 +48,20 @@ public class ServiceMapper {
             )
         );
 
-        final DataTransformer dataTransformer = new DataTransformer();
-        final boolean hasInputs = oddrns.getInputs() != null && oddrns.getInputs().size() > 0;
-        final boolean hasOutputs = oddrns.getOutputs() != null && oddrns.getOutputs().size() > 0;
+        if (oddrns.getServiceType().equals(DataEntityType.MICROSERVICE)) {
+            entity.setType(DataEntityType.MICROSERVICE);
+            final DataTransformer dataTransformer = new DataTransformer();
+            final boolean hasInputs = oddrns.getInputs() != null && oddrns.getInputs().size() > 0;
+            final boolean hasOutputs = oddrns.getOutputs() != null && oddrns.getOutputs().size() > 0;
 
-        dataTransformer.setInputs(hasInputs ? new ArrayList<>(oddrns.getInputs()) : List.of());
-        dataTransformer.setOutputs(hasOutputs ? new ArrayList<>(oddrns.getOutputs()) : List.of());
-        entity.setDataTransformer(dataTransformer);
+            dataTransformer.setInputs(hasInputs ? new ArrayList<>(oddrns.getInputs()) : List.of());
+            dataTransformer.setOutputs(hasOutputs ? new ArrayList<>(oddrns.getOutputs()) : List.of());
+            entity.setDataTransformer(dataTransformer);
+        } else if (oddrns.getServiceType().equals(DataEntityType.API_CALL)) {
+            entity.setType(DataEntityType.API_CALL);
+            final DataInput dataInput = new DataInput();
+            entity.setDataInput(dataInput);
+        }
 
         return entity;
     }

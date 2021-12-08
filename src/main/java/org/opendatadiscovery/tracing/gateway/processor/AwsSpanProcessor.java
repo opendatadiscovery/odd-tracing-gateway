@@ -15,7 +15,9 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.exception.EmptyPathValueException;
 import org.opendatadiscovery.oddrn.exception.PathDoesntExistException;
 import org.opendatadiscovery.oddrn.model.DynamodbPath;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
+import org.opendatadiscovery.tracing.gateway.util.AnyValueUtil;
 import org.springframework.stereotype.Service;
 
 import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.isSetString;
@@ -32,7 +34,9 @@ public class AwsSpanProcessor implements SpanProcessor {
     }
 
     @Override
-    public ServiceOddrns process(final List<Span> spans, final Map<String, AnyValue> keyValue) {
+    public List<ServiceOddrns> process(final List<Span> spans,
+                                       final Map<String, AnyValue> keyValue,
+                                       final NameOddrn service) {
         final Set<String> inputs = new HashSet<>();
         final Set<String> outputs = new HashSet<>();
 
@@ -46,10 +50,15 @@ public class AwsSpanProcessor implements SpanProcessor {
             }
         }
 
-        return ServiceOddrns.builder()
-            .inputs(inputs)
-            .outputs(outputs)
-            .build();
+        return List.of(
+            ServiceOddrns.builder()
+                .inputs(inputs)
+                .outputs(outputs)
+                .oddrn(service.getOddrn())
+                .name(service.getName())
+                .metadata(AnyValueUtil.toStringMap(keyValue))
+                .build()
+        );
     }
 
     private void dynamoDb(final Span span, final Set<String> inputs, final Set<String> outputs)

@@ -6,8 +6,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.opendatadiscovery.oddrn.Generator;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +22,7 @@ public class JdbcSpanProcessorTest {
     @Test
     public void test() {
         final Instant now = Instant.now();
-        final ServiceOddrns oddrns = processor.process(
+        final List<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_CLIENT)
@@ -43,22 +45,23 @@ public class JdbcSpanProcessorTest {
                             withInt("net.peer.port", 5432)
                         )
                     ).build()
-            ), Map.of()
-        ).toBuilder().updatedAt(now).build();
+            ), Map.of(), NameOddrn.builder().oddrn("").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toList());
         assertEquals(
-            ServiceOddrns.builder()
-                .updatedAt(now)
-                .inputs(
-                    Set.of(
-                        "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
+            List.of(
+                ServiceOddrns.builder()
+                    .updatedAt(now)
+                    .inputs(
+                        Set.of(
+                            "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
+                        )
                     )
-                )
-                .outputs(
-                    Set.of(
-                        "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
-                    )
-                ).build(),
-            oddrns
+                    .outputs(
+                        Set.of(
+                            "//postgresql/host/database/databases/odd_traces_test_app/schemas/public/tables/client"
+                        )
+                    ).build()
+            ), oddrns
         );
     }
 }
