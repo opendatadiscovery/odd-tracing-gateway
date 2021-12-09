@@ -2,6 +2,7 @@ package org.opendatadiscovery.tracing.gateway.service;
 
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -80,27 +81,26 @@ public class ResourceSpanProcessor {
         log.info("library name: {}", library.getName());
         Mono<Boolean> result = Mono.just(true);
         try {
+            final Map<String, AnyValue> keyValueWithVersion = AnyValueUtil.mergeMaps(
+                keyValue,
+                Map.of(
+                    "service.version",
+                    AnyValue.newBuilder().setStringValue(service.getVersion()).build()
+                )
+            );
+
             for (final SpanProcessor spanProcessor : processors) {
                 if (spanProcessor.accept(library.getName())) {
-                    final ServiceOddrns oddrns = spanProcessor.process(spans.getSpansList(), keyValue)
-                        .toBuilder()
-                        .oddrn(service.getOddrn())
-                        .name(service.getName())
-                        .metadata(
-                            AnyValueUtil.toStringMap(
-                                keyValue,
-                                Map.of(
-                                    "service.version",
-                                    AnyValue.newBuilder().setStringValue(service.getVersion()).build()
-                                )
-                            )
-                        )
-                        .build();
+                    final List<ServiceOddrns> oddrns = spanProcessor.process(
+                        spans.getSpansList(), keyValueWithVersion, service
+                    );
 
                     log.info("oddrns: {}", oddrns);
-                    result = result.flatMap(
-                        t -> repository.add(oddrns).map(v -> true)
-                    );
+                    for (final ServiceOddrns oddrn : oddrns) {
+                        result = result.flatMap(
+                            t -> repository.add(oddrn).map(v -> true)
+                        );
+                    }
                 }
             }
         } catch (Throwable e) {

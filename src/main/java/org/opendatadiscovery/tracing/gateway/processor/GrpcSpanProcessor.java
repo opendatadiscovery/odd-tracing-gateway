@@ -2,6 +2,7 @@ package org.opendatadiscovery.tracing.gateway.processor;
 
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.trace.v1.Span;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -9,10 +10,13 @@ import java.util.Optional;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
+import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.GrpcServicePath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
+import org.opendatadiscovery.tracing.gateway.util.AnyValueUtil;
 import org.springframework.stereotype.Service;
 
 import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
@@ -28,9 +32,12 @@ public class GrpcSpanProcessor implements SpanProcessor {
     }
 
     @Override
-    public ServiceOddrns process(final List<Span> spans, final Map<String, AnyValue> keyValue) {
+    public List<ServiceOddrns> process(final List<Span> spans,
+                                       final Map<String, AnyValue> keyValue,
+                                       final NameOddrn nameOddrn) {
         final Set<String> inputs = new HashSet<>();
         final Set<String> outputs = new HashSet<>();
+        final List<ServiceOddrns> oddrns = new ArrayList<>();
 
         for (final Span span : spans) {
             final Map<String, AnyValue> attributes = toMap(span.getAttributesList());
@@ -45,16 +52,39 @@ public class GrpcSpanProcessor implements SpanProcessor {
                     .method(method.get())
                     .build();
                 if (span.getKind().equals(Span.SpanKind.SPAN_KIND_SERVER)) {
-                    outputs.add(generate(grpcPath));
+                    final String pathOddrn = generate(grpcPath);
+                    outputs.add(pathOddrn);
+                    oddrns.add(
+                        ServiceOddrns.builder()
+                            .name(String.format("%s/%s", service.get(), method.get()))
+                            .oddrn(pathOddrn)
+                            .serviceType(DataEntityType.API_CALL)
+                            .inputs(Set.of())
+                            .outputs(Set.of(nameOddrn.getOddrn()))
+                            .metadata(
+                                Map.of(
+                                    "rpc.service", service.get(),
+                                    "rpc.method", method.get()
+                                )
+                            )
+                            .build()
+                    );
                 } else if (span.getKind().equals(Span.SpanKind.SPAN_KIND_CLIENT)) {
                     inputs.add(generate(grpcPath));
                 }
             }
         }
-        return ServiceOddrns.builder()
-            .inputs(inputs)
-            .outputs(outputs)
-            .build();
+
+        oddrns.add(
+            ServiceOddrns.builder()
+                .inputs(inputs)
+                .outputs(outputs)
+                .oddrn(nameOddrn.getOddrn())
+                .name(nameOddrn.getName())
+                .metadata(AnyValueUtil.toStringMap(keyValue))
+                .build()
+        );
+        return oddrns;
     }
 
     @SneakyThrows

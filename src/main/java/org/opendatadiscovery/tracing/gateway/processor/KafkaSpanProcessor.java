@@ -14,7 +14,9 @@ import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.KafkaPath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
 import org.opendatadiscovery.tracing.gateway.config.AppProperties;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
+import org.opendatadiscovery.tracing.gateway.util.AnyValueUtil;
 import org.springframework.stereotype.Service;
 
 import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
@@ -31,7 +33,9 @@ public class KafkaSpanProcessor implements SpanProcessor {
     }
 
     @Override
-    public ServiceOddrns process(final List<Span> spans, final Map<String, AnyValue> keyValue) {
+    public List<ServiceOddrns> process(final List<Span> spans,
+                                       final Map<String, AnyValue> keyValue,
+                                       final NameOddrn nameOddrn) {
         final Set<String> inputs = new HashSet<>();
         final Set<String> outputs = new HashSet<>();
 
@@ -56,10 +60,16 @@ public class KafkaSpanProcessor implements SpanProcessor {
                 }
             }
         }
-        return ServiceOddrns.builder()
-            .inputs(inputs)
-            .outputs(outputs)
-            .build();
+
+        return List.of(
+            ServiceOddrns.builder()
+                .inputs(inputs)
+                .outputs(outputs)
+                .oddrn(nameOddrn.getOddrn())
+                .name(nameOddrn.getName())
+                .metadata(AnyValueUtil.toStringMap(keyValue))
+                .build()
+        );
     }
 
     @SneakyThrows

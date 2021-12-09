@@ -6,8 +6,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.oddrn.Generator;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,7 +22,7 @@ public class GrpcSpanProcessorTest {
     @Test
     public void testServer() {
         final Instant now = Instant.now();
-        final ServiceOddrns oddrns = processor.process(
+        final Set<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_SERVER)
@@ -31,25 +34,45 @@ public class GrpcSpanProcessorTest {
                             withString("rpc.method", "Health")
                         )
                     ).build()
-            ), Map.of()
-        ).toBuilder().updatedAt(now).build();
+            ), Map.of(), NameOddrn.builder().oddrn("//microservice/1").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toSet());
         assertEquals(
-            ServiceOddrns.builder()
-                .updatedAt(now)
-                .inputs(Set.of())
-                .outputs(
-                    Set.of(
-                        "//grpc/host/empty/services/com.odd.Grpc/methods/Health"
+            Set.of(
+                ServiceOddrns.builder()
+                    .oddrn("//microservice/1")
+                    .serviceType(DataEntityType.MICROSERVICE)
+                    .updatedAt(now)
+                    .inputs(Set.of())
+                    .outputs(
+                        Set.of(
+                            "//grpc/host/empty/services/com.odd.Grpc/methods/Health"
+                        )
+                    ).build(),
+                ServiceOddrns.builder()
+                    .name("com.odd.Grpc/Health")
+                    .oddrn("//grpc/host/empty/services/com.odd.Grpc/methods/Health")
+                    .serviceType(DataEntityType.API_CALL)
+                    .updatedAt(now)
+                    .metadata(
+                        Map.of(
+                            "rpc.service", "com.odd.Grpc",
+                            "rpc.method", "Health"
+                        )
                     )
-                ).build(),
-            oddrns
+                    .inputs(Set.of())
+                    .outputs(
+                        Set.of(
+                            "//microservice/1"
+                        )
+                    ).build()
+            ), oddrns
         );
     }
 
     @Test
     public void testClient() {
         final Instant now = Instant.now();
-        final ServiceOddrns oddrns = processor.process(
+        final List<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_CLIENT)
@@ -61,17 +84,19 @@ public class GrpcSpanProcessorTest {
                             withString("rpc.method", "Health")
                         )
                     ).build()
-            ), Map.of()
-        ).toBuilder().updatedAt(now).build();
+            ), Map.of(), NameOddrn.builder().oddrn("").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toList());
         assertEquals(
-            ServiceOddrns.builder()
-                .updatedAt(now)
-                .outputs(Set.of())
-                .inputs(
-                    Set.of(
-                        "//grpc/host/empty/services/com.odd.Grpc/methods/Health"
-                    )
-                ).build(),
+            List.of(
+                ServiceOddrns.builder()
+                    .updatedAt(now)
+                    .outputs(Set.of())
+                    .inputs(
+                        Set.of(
+                            "//grpc/host/empty/services/com.odd.Grpc/methods/Health"
+                        )
+                    ).build()
+            ),
             oddrns
         );
     }

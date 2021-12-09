@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,13 +24,30 @@ public class AnyValueUtil {
         return Optional.ofNullable(keyValueMap.get(key)).map(AnyValue::getStringValue);
     }
 
+    public static Map<String, AnyValue> mergeMaps(final Map<String, AnyValue> ...maps) {
+        return Arrays.stream(maps)
+            .flatMap(m -> m.entrySet().stream())
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    Map.Entry::getValue,
+                    (c1, c2) -> c2
+                )
+            );
+    }
+
     public static Map<String, AnyValue> toMap(final List<KeyValue> list) {
         return list.stream().collect(
             Collectors.toMap(
                 KeyValue::getKey,
-                KeyValue::getValue
+                KeyValue::getValue,
+                (c1, c2) -> c2
             )
         );
+    }
+
+    public static Map<String, String> toStringMap(final Map<String, AnyValue> map) {
+        return toStringMap(map, Map.of());
     }
 
     public static Map<String, String> toStringMap(final Map<String, AnyValue> map, final Map<String, AnyValue> addon) {

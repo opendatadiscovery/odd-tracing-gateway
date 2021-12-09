@@ -18,7 +18,9 @@ import org.opendatadiscovery.tracing.gateway.db.PostgreSqlParser;
 import org.opendatadiscovery.tracing.gateway.db.SqlParser;
 import org.opendatadiscovery.tracing.gateway.db.SqlStatementInfo;
 import org.opendatadiscovery.tracing.gateway.db.TableName;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
+import org.opendatadiscovery.tracing.gateway.util.AnyValueUtil;
 import org.springframework.stereotype.Service;
 
 import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
@@ -42,7 +44,9 @@ public class JdbcSpanProcessor implements SpanProcessor {
     }
 
     @Override
-    public ServiceOddrns process(final List<Span> spans, final Map<String, AnyValue> keyValue) {
+    public List<ServiceOddrns> process(final List<Span> spans,
+                                       final Map<String, AnyValue> keyValue,
+                                       final NameOddrn nameOddrn) {
         final Set<String> inputs = new HashSet<>();
         final Set<String> outputs = new HashSet<>();
         for (final Span span : spans) {
@@ -74,10 +78,16 @@ public class JdbcSpanProcessor implements SpanProcessor {
                 );
             }
         }
-        return ServiceOddrns.builder()
-            .inputs(inputs)
-            .outputs(outputs)
-            .build();
+
+        return List.of(
+            ServiceOddrns.builder()
+                .inputs(inputs)
+                .outputs(outputs)
+                .oddrn(nameOddrn.getOddrn())
+                .name(nameOddrn.getName())
+                .metadata(AnyValueUtil.toStringMap(keyValue))
+                .build()
+        );
     }
 
     @SneakyThrows

@@ -31,7 +31,7 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-data-redis-reactive"
     implementation "com.github.jsqlparser:jsqlparser:4.2"
     implementation "org.opendatadiscovery:oddrn-generator-java:0.1.2"
-    implementation "org.opendatadiscovery:adapter-contract-server:0.1.4"
+    implementation "org.opendatadiscovery:adapter-contract-server:0.1.5"
     implementation "com.github.docker-java:docker-java-core:3.2.12"
     implementation "com.github.docker-java:docker-java-transport-zerodep:3.2.12"
     implementation 'io.fabric8:kubernetes-client:5.10.1'

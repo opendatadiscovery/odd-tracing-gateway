@@ -6,9 +6,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.tracing.gateway.config.AppProperties;
+import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -21,7 +23,7 @@ public class KafkaSpanProcessorTest {
     @Test
     public void testServer() {
         final Instant now = Instant.now();
-        final ServiceOddrns oddrns = processor.process(
+        final List<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_PRODUCER)
@@ -32,25 +34,26 @@ public class KafkaSpanProcessorTest {
                             withString("messaging.destination", "topic")
                         )
                     ).build()
-            ), Map.of()
-        ).toBuilder().updatedAt(now).build();
+            ), Map.of(), NameOddrn.builder().oddrn("").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toList());
         assertEquals(
-            ServiceOddrns.builder()
-                .updatedAt(now)
-                .inputs(Set.of())
-                .outputs(
-                    Set.of(
-                        "//kafka/host/unknown/topics/topic"
-                    )
-                ).build(),
-            oddrns
+            List.of(
+                ServiceOddrns.builder()
+                    .updatedAt(now)
+                    .inputs(Set.of())
+                    .outputs(
+                        Set.of(
+                            "//kafka/host/unknown/topics/topic"
+                        )
+                    ).build()
+            ), oddrns
         );
     }
 
     @Test
     public void testClient() {
         final Instant now = Instant.now();
-        final ServiceOddrns oddrns = processor.process(
+        final List<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_CONSUMER)
@@ -61,18 +64,19 @@ public class KafkaSpanProcessorTest {
                             withString("messaging.destination", "topic")
                         )
                     ).build()
-            ), Map.of()
-        ).toBuilder().updatedAt(now).build();
+            ), Map.of(), NameOddrn.builder().oddrn("").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toList());
         assertEquals(
-            ServiceOddrns.builder()
-                .updatedAt(now)
-                .outputs(Set.of())
-                .inputs(
-                    Set.of(
-                        "//kafka/host/unknown/topics/topic"
-                    )
-                ).build(),
-            oddrns
+            List.of(
+                ServiceOddrns.builder()
+                    .updatedAt(now)
+                    .outputs(Set.of())
+                    .inputs(
+                        Set.of(
+                            "//kafka/host/unknown/topics/topic"
+                        )
+                    ).build()
+            ), oddrns
         );
     }
 }
