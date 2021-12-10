@@ -60,6 +60,7 @@ public class ServiceMapper {
         } else if (oddrns.getServiceType().equals(DataEntityType.API_CALL)) {
             entity.setType(DataEntityType.API_CALL);
             final DataInput dataInput = new DataInput();
+            dataInput.setOutputs(List.of());
             entity.setDataInput(dataInput);
         }
 
