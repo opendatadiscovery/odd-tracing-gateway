@@ -15,6 +15,7 @@ import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.oddrn.Generator;
 import org.opendatadiscovery.oddrn.model.HttpServicePath;
 import org.opendatadiscovery.oddrn.model.OddrnPath;
+import org.opendatadiscovery.tracing.gateway.config.HttpProperties;
 import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 import org.opendatadiscovery.tracing.gateway.util.AnyValueUtil;
@@ -27,6 +28,7 @@ import static org.opendatadiscovery.tracing.gateway.util.AnyValueUtil.toMap;
 @AllArgsConstructor
 public class HttpSpanProcessor implements SpanProcessor {
     private final Generator generator;
+    private final HttpProperties httpProperties;
 
     @Override
     public boolean accept(final String library) {
@@ -53,33 +55,36 @@ public class HttpSpanProcessor implements SpanProcessor {
                 final Optional<String> path =
                     Optional.ofNullable(attributes.get("http.target")).map(AnyValue::getStringValue);
                 if (host.isPresent() && path.isPresent() && method.isPresent()) {
-                    final String sanitizedPath = PathUtil.sanitize(path.get());
-                    final HttpServicePath httpPath = HttpServicePath.builder()
-                        .host(host.get())
-                        .method(method.get().toLowerCase())
-                        .path(sanitizedPath)
-                        .build();
+                    if (httpProperties.getStaticPrefix().isEmpty()
+                        || !path.get().startsWith(httpProperties.getStaticPrefix())) {
+                        final String sanitizedPath = PathUtil.sanitize(path.get());
+                        final HttpServicePath httpPath = HttpServicePath.builder()
+                            .host(host.get())
+                            .method(method.get().toLowerCase())
+                            .path(sanitizedPath)
+                            .build();
 
-                    final String pathOddrn = generate(httpPath);
-                    outputs.add(pathOddrn);
-                    oddrns.add(
-                        ServiceOddrns.builder()
-                            .name(String.format("%s%s", host.get(), sanitizedPath))
-                            .oddrn(pathOddrn)
-                            .serviceType(DataEntityType.API_CALL)
-                            .inputs(Set.of())
-                            .outputs(Set.of(nameOddrn.getOddrn()))
-                            .metadata(
-                                Map.of(
-                                    "http.host", host.get(),
-                                    "http.method", method.get(),
-                                    "http.path", PathUtil.sanitize(path.get())
+                        final String pathOddrn = generate(httpPath);
+                        outputs.add(pathOddrn);
+                        oddrns.add(
+                            ServiceOddrns.builder()
+                                .name(String.format("%s%s", host.get(), sanitizedPath))
+                                .oddrn(pathOddrn)
+                                .serviceType(DataEntityType.API_CALL)
+                                .inputs(Set.of())
+                                .outputs(Set.of(nameOddrn.getOddrn()))
+                                .metadata(
+                                    Map.of(
+                                        "http.host", host.get(),
+                                        "http.method", method.get(),
+                                        "http.path", PathUtil.sanitize(path.get())
+                                    )
                                 )
-                            )
-                            .build()
-                    );
+                                .build()
+                        );
 
-                    outputs.add(generate(httpPath));
+                        outputs.add(generate(httpPath));
+                    }
                 }
             } else if (span.getKind().equals(Span.SpanKind.SPAN_KIND_CLIENT)) {
                 final Optional<URL> url =

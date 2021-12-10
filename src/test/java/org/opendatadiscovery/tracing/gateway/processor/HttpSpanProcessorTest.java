@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.oddrn.Generator;
+import org.opendatadiscovery.tracing.gateway.config.HttpProperties;
 import org.opendatadiscovery.tracing.gateway.model.NameOddrn;
 import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 
@@ -18,7 +19,8 @@ import static org.opendatadiscovery.tracing.gateway.util.KeyValueUtils.withInt;
 import static org.opendatadiscovery.tracing.gateway.util.KeyValueUtils.withString;
 
 public class HttpSpanProcessorTest {
-    private final HttpSpanProcessor processor = new HttpSpanProcessor(new Generator());
+    private final HttpSpanProcessor processor =
+        new HttpSpanProcessor(new Generator(), new HttpProperties());
 
     @Test
     public void testServer() {
@@ -47,6 +49,7 @@ public class HttpSpanProcessorTest {
                     ).build()
             ), Map.of(), NameOddrn.builder().oddrn("//microservice/1").name("").build()
         ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toSet());
+
         assertEquals(
             Set.of(
                 ServiceOddrns.builder()
@@ -76,6 +79,49 @@ public class HttpSpanProcessorTest {
                         Set.of(
                             "//microservice/1"
                         )
+                    ).build()
+            ),
+            oddrns
+        );
+    }
+
+    @Test
+    public void testStaticServer() {
+        final Instant now = Instant.now();
+        final Set<ServiceOddrns> oddrns = processor.process(
+            List.of(
+                Span.newBuilder()
+                    .setKind(Span.SpanKind.SPAN_KIND_SERVER)
+                    .setName("GET /static/js/12.32718a4b.chunk.js")
+                    .setStatus(Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_UNSET).build())
+                    .addAllAttributes(
+                        List.of(
+                            withString("http.scheme", "http"),
+                            withString("http.host", "odd-platform"),
+                            withInt("thread.id", 32),
+                            withString("net.peer.ip", "10.7.154.205"),
+                            withString("thread.name", "reactor-http-epoll-3"),
+                            withString("http.method", "GET"),
+                            withInt("http.status_code", 200),
+                            withString("net.peer.name", "10-7-154-205.odd-platform-puller.demo.svc.cluster.local"),
+                            withString("http.user_agent", "ReactorNetty/1.0.8"),
+                            withString("http.flavor", "1.1"),
+                            withString("http.target", "/static/js/12.32718a4b.chunk.js"),
+                            withInt("net.peer.port", 55286)
+                        )
+                    ).build()
+            ), Map.of(), NameOddrn.builder().oddrn("//microservice/1").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toSet());
+
+        assertEquals(
+            Set.of(
+                ServiceOddrns.builder()
+                    .serviceType(DataEntityType.MICROSERVICE)
+                    .oddrn("//microservice/1")
+                    .updatedAt(now)
+                    .inputs(Set.of())
+                    .outputs(
+                        Set.of()
                     ).build()
             ),
             oddrns
