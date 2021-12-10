@@ -4,6 +4,15 @@ import org.apache.commons.lang.math.NumberUtils;
 
 public class PathUtil {
 
+    public static String replacePort(final String host) {
+        final int pos = host.indexOf(":");
+        if (pos>0) {
+            return host.substring(0, pos);
+        } else {
+            return host;
+        }
+    }
+
     public static String sanitize(final String path) {
         final int queryPos = path.indexOf("?");
         final String pathWithoutQuery;

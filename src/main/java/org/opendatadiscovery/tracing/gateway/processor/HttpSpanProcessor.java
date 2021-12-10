@@ -49,7 +49,8 @@ public class HttpSpanProcessor implements SpanProcessor {
             final Map<String, AnyValue> attributes = toMap(span.getAttributesList());
             if (span.getKind().equals(Span.SpanKind.SPAN_KIND_SERVER)) {
                 final Optional<String> host =
-                    Optional.ofNullable(attributes.get("http.host")).map(AnyValue::getStringValue);
+                    Optional.ofNullable(attributes.get("http.host")).map(AnyValue::getStringValue)
+                        .map(PathUtil::replacePort);
                 final Optional<String> method =
                     Optional.ofNullable(attributes.get("http.method")).map(AnyValue::getStringValue);
                 final Optional<String> path =

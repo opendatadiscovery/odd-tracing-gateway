@@ -34,7 +34,7 @@ public class HttpSpanProcessorTest {
                     .addAllAttributes(
                         List.of(
                             withString("http.scheme", "http"),
-                            withString("http.host", "odd-platform"),
+                            withString("http.host", "odd-platform:8080"),
                             withInt("thread.id", 32),
                             withString("net.peer.ip", "10.7.154.205"),
                             withString("thread.name", "reactor-http-epoll-3"),
