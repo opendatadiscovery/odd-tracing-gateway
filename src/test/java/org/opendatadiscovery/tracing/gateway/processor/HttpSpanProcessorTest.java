@@ -131,7 +131,7 @@ public class HttpSpanProcessorTest {
     @Test
     public void testClient() {
         final Instant now = Instant.now();
-        final List<ServiceOddrns> oddrns = processor.process(
+        final Set<ServiceOddrns> oddrns = processor.process(
             List.of(
                 Span.newBuilder()
                     .setKind(Span.SpanKind.SPAN_KIND_CLIENT)
@@ -149,16 +149,35 @@ public class HttpSpanProcessorTest {
                             withString("net.peer.name", "odd-platform")
                         )
                     ).build()
-            ), Map.of(), NameOddrn.builder().oddrn("").name("").build()
-        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toList());
+            ), Map.of(), NameOddrn.builder().oddrn("//microservice/1").name("").build()
+        ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toSet());
         assertEquals(
-            List.of(
+            Set.of(
                 ServiceOddrns.builder()
+                    .oddrn("//microservice/1")
                     .updatedAt(now)
                     .outputs(Set.of())
                     .inputs(
                         Set.of(
                             "//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active"
+                        )
+                    ).build(),
+                ServiceOddrns.builder()
+                    .name("odd-platform/ingestion/datasources/active")
+                    .oddrn("//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active")
+                    .serviceType(DataEntityType.API_CALL)
+                    .updatedAt(now)
+                    .metadata(
+                        Map.of(
+                            "http.host", "odd-platform",
+                            "http.method", "GET",
+                            "http.path", "/ingestion/datasources/active"
+                        )
+                    )
+                    .inputs(Set.of())
+                    .outputs(
+                        Set.of(
+                            "//microservice/1"
                         )
                     ).build()
             ), oddrns

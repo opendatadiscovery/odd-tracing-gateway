@@ -93,12 +93,36 @@ public class HttpSpanProcessor implements SpanProcessor {
                 final Optional<String> method =
                     Optional.ofNullable(attributes.get("http.method")).map(AnyValue::getStringValue);
                 if (url.isPresent() && method.isPresent()) {
+                    final String sanitizePath = PathUtil.sanitize(url.get().getPath());
                     final HttpServicePath httpPath = HttpServicePath.builder()
                         .host(url.get().getHost())
                         .method(method.get().toLowerCase())
-                        .path(PathUtil.sanitize(url.get().getPath()))
+                        .path(sanitizePath)
                         .build();
-                    inputs.add(generate(httpPath));
+                    final String pathOddrn = generate(httpPath);
+
+                    inputs.add(pathOddrn);
+
+                    final Optional<Long> status =
+                        Optional.ofNullable(attributes.get("http.status_code")).map(AnyValue::getIntValue);
+                    if (status.isPresent() && (status.get() >= 100 && status.get() < 400)) {
+                        oddrns.add(
+                            ServiceOddrns.builder()
+                                .name(String.format("%s%s", url.get().getHost(), sanitizePath))
+                                .oddrn(pathOddrn)
+                                .serviceType(DataEntityType.API_CALL)
+                                .inputs(Set.of())
+                                .outputs(Set.of(nameOddrn.getOddrn()))
+                                .metadata(
+                                    Map.of(
+                                        "http.host", url.get().getHost(),
+                                        "http.method", method.get(),
+                                        "http.path", sanitizePath
+                                    )
+                                )
+                                .build()
+                        );
+                    }
                 }
             }
         }
