@@ -2,9 +2,12 @@ package org.opendatadiscovery.tracing.gateway.repository;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +29,9 @@ public class CacheRepositoryImpl implements CacheRepository {
     private static final String UPDATES_KEY = String.format("%s-updates", PREFIX);
     private static final String INPUT_KEY = "input";
     private static final String OUTPUT_KEY = "output";
-    private static final Object NAME_KEY = "name";
-    private static final Object TYPE_KEY = "type";
+    private static final String NAME_KEY = "SYSTEM_ODD_NAME";
+    private static final String TYPE_KEY = "SYSTEM_ODD_TYPE";
+    private static final String VERSION_KEY = "SYSTEM_ODD_VERSION";
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
 
@@ -37,8 +41,6 @@ public class CacheRepositoryImpl implements CacheRepository {
         final ReactiveValueOperations<String, String> valueOps = redisTemplate.opsForValue();
 
         final String oddrnKey = String.format("%s-%s", PREFIX, oddrn);
-        final String oddrnKeyName = String.format("%s-%s", oddrnKey, NAME_KEY);
-        final String oddrnKeyType = String.format("%s-%s", oddrnKey, TYPE_KEY);
         final String inputKey = String.format("%s-%s", oddrnKey, INPUT_KEY);
         final String outputKey = String.format("%s-%s", oddrnKey, OUTPUT_KEY);
 
@@ -52,26 +54,35 @@ public class CacheRepositoryImpl implements CacheRepository {
                     .outputs(new HashSet<>(l2))
                     .build()
             ).zipWith(
-                opsHash.entries(oddrnKey).collectList()
-                    .map(l -> l.stream().collect(
-                            Collectors.toMap(
-                                Map.Entry::getKey,
-                                Map.Entry::getValue
-                            )
-                        )
-                    ),
-                (s, m) -> s.toBuilder().metadata(m).build()
-            ).zipWith(
-                valueOps.get(oddrnKeyName),
-                (s, n) -> s.toBuilder().name(n).build()
-            ).zipWith(
-                valueOps.get(oddrnKeyType),
-                (s, n) -> s.toBuilder().serviceType(
-                    n != null && !n.isEmpty()
-                        ? DataEntityType.fromValue(n)
-                        : DataEntityType.MICROSERVICE
-                ).build()
+                opsHash.entries(oddrnKey).collectList(),
+                this::parseMetadata
             );
+    }
+
+    private ServiceOddrns parseMetadata(final ServiceOddrns oddrns, final List<Map.Entry<String, String>> entries) {
+        final Map<String, String> metadata = new HashMap<>();
+        String name = "unknown";
+        DataEntityType type = DataEntityType.MICROSERVICE;
+        String version = "unknown";
+
+        for (final Map.Entry<String, String> entry : entries) {
+            if (entry.getKey().equals(NAME_KEY)) {
+                name = entry.getValue();
+            } else if (entry.getKey().equals(TYPE_KEY)) {
+                type = DataEntityType.fromValue(entry.getValue());
+            } else if (entry.getKey().equals(VERSION_KEY)) {
+                version = entry.getValue();
+            } else {
+                metadata.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        return oddrns.toBuilder()
+            .name(name)
+            .serviceType(type)
+            .version(version)
+            .metadata(metadata)
+            .build();
     }
 
     @Override
@@ -92,15 +103,28 @@ public class CacheRepositoryImpl implements CacheRepository {
         final ReactiveValueOperations<String, String> valueOps = redisTemplate.opsForValue();
 
         final String oddrnKey = String.format("%s-%s", PREFIX, oddrns.getOddrn());
-        final String oddrnKeyName = String.format("%s-%s", oddrnKey, NAME_KEY);
-        final String oddrnKeyType = String.format("%s-%s", oddrnKey, TYPE_KEY);
         final String inputKey = String.format("%s-%s", oddrnKey, INPUT_KEY);
         final String outputKey = String.format("%s-%s", oddrnKey, OUTPUT_KEY);
 
-        final Mono<Boolean> metadataMono = hashOps.putAll(oddrnKey, oddrns.getMetadata());
+        final Map<String, String> metadata = new HashMap<>(oddrns.getMetadata());
+        metadata.put(NAME_KEY, oddrns.getName());
+        metadata.put(TYPE_KEY, oddrns.getServiceType().getValue());
+        metadata.put(VERSION_KEY, oddrns.getVersion());
 
-        final Mono<Boolean> nameMono = valueOps.set(oddrnKeyName, oddrns.getName());
-        final Mono<Boolean> typeMono = valueOps.set(oddrnKeyType, oddrns.getServiceType().getValue());
+        final Mono<Boolean> metadataMono = hashOps.putAll(oddrnKey, metadata);
+
+        final Mono<Boolean> groupMono =
+            oddrns.getGroupOddrn() != null && oddrns.getGroupType() != null
+                ? this.add(
+                    ServiceOddrns.builder()
+                        .name(oddrns.getGroupName())
+                        .serviceType(oddrns.getGroupType())
+                        .oddrn(oddrns.getGroupOddrn())
+                        .inputs(Set.of(oddrns.getOddrn()))
+                        .outputs(Set.of())
+                        .build()
+                ).map(s -> true)
+                : Mono.just(false);
 
         final Mono<Long> inputs = oddrns.getInputs().size() > 0
             ? ops.add(inputKey, oddrns.getInputs().toArray(new String[0]))
@@ -120,7 +144,9 @@ public class CacheRepositoryImpl implements CacheRepository {
             }
         ).flatMap(o -> {
             log.info("oddrns updated {}", o);
-            return metadataMono.flatMap(m -> nameMono).flatMap(m -> typeMono).map(r -> o);
+            return metadataMono
+                .flatMap(m -> groupMono)
+                .map(r -> o);
         });
     }
 

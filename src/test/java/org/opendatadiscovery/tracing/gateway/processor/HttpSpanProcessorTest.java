@@ -57,6 +57,7 @@ public class HttpSpanProcessorTest {
                     .oddrn("//microservice/1")
                     .updatedAt(now)
                     .inputs(Set.of())
+                    .version("unknown")
                     .outputs(
                         Set.of(
                             "//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active"
@@ -67,6 +68,9 @@ public class HttpSpanProcessorTest {
                     .oddrn("//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active")
                     .serviceType(DataEntityType.API_CALL)
                     .updatedAt(now)
+                    .groupOddrn("//http/host/odd-platform")
+                    .groupName("odd-platform")
+                    .groupType(DataEntityType.API_SERVICE)
                     .metadata(
                         Map.of(
                             "http.host", "odd-platform",
@@ -118,6 +122,7 @@ public class HttpSpanProcessorTest {
                 ServiceOddrns.builder()
                     .serviceType(DataEntityType.MICROSERVICE)
                     .oddrn("//microservice/1")
+                    .version("unknown")
                     .updatedAt(now)
                     .inputs(Set.of())
                     .outputs(
@@ -157,6 +162,7 @@ public class HttpSpanProcessorTest {
                     .oddrn("//microservice/1")
                     .updatedAt(now)
                     .outputs(Set.of())
+                    .version("unknown")
                     .inputs(
                         Set.of(
                             "//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active"
@@ -166,6 +172,9 @@ public class HttpSpanProcessorTest {
                     .name("odd-platform/ingestion/datasources/active")
                     .oddrn("//http/host/odd-platform/method/get/path/\\\\ingestion\\\\datasources\\\\active")
                     .serviceType(DataEntityType.API_CALL)
+                    .groupOddrn("//http/host/odd-platform")
+                    .groupName("odd-platform")
+                    .groupType(DataEntityType.API_SERVICE)
                     .updatedAt(now)
                     .metadata(
                         Map.of(

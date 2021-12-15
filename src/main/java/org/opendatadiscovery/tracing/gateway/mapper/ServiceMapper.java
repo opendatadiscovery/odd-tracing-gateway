@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opendatadiscovery.adapter.contract.model.DataEntity;
+import org.opendatadiscovery.adapter.contract.model.DataEntityGroup;
 import org.opendatadiscovery.adapter.contract.model.DataEntityList;
 import org.opendatadiscovery.adapter.contract.model.DataEntityType;
 import org.opendatadiscovery.adapter.contract.model.DataInput;
@@ -39,6 +40,9 @@ public class ServiceMapper {
         final DataEntity entity = new DataEntity();
         entity.setName(oddrns.getName());
         entity.setOddrn(oddrns.getOddrn());
+        if (oddrns.getVersion() != null && !oddrns.getVersion().equals("unknown")) {
+            entity.setVersion(oddrns.getVersion());
+        }
         entity.setUpdatedAt(OffsetDateTime.ofInstant(oddrns.getUpdatedAt(), ZoneOffset.UTC));
         entity.setMetadata(
             List.of(
@@ -62,6 +66,13 @@ public class ServiceMapper {
             final DataInput dataInput = new DataInput();
             dataInput.setOutputs(List.of());
             entity.setDataInput(dataInput);
+        } else if (oddrns.getServiceType().equals(DataEntityType.API_SERVICE)) {
+            entity.setType(DataEntityType.API_SERVICE);
+            final DataEntityGroup dataGroup = new DataEntityGroup();
+            dataGroup.entitiesList(
+                new ArrayList<>(oddrns.getInputs())
+            );
+            entity.setDataEntityGroup(dataGroup);
         }
 
         return entity;

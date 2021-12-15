@@ -41,6 +41,7 @@ public class GrpcSpanProcessorTest {
                 ServiceOddrns.builder()
                     .oddrn("//microservice/1")
                     .serviceType(DataEntityType.MICROSERVICE)
+                    .version("unknown")
                     .updatedAt(now)
                     .inputs(Set.of())
                     .outputs(
@@ -52,6 +53,9 @@ public class GrpcSpanProcessorTest {
                     .name("com.odd.Grpc/Health")
                     .oddrn("//grpc/host/empty/services/com.odd.Grpc/methods/Health")
                     .serviceType(DataEntityType.API_CALL)
+                    .groupOddrn("//grpc/host/empty/services/com.odd.Grpc")
+                    .groupName("com.odd.Grpc")
+                    .groupType(DataEntityType.API_SERVICE)
                     .updatedAt(now)
                     .metadata(
                         Map.of(

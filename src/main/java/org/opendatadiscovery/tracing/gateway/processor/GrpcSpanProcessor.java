@@ -51,13 +51,20 @@ public class GrpcSpanProcessor implements SpanProcessor {
                     .service(service.get())
                     .method(method.get())
                     .build();
+                final GrpcServicePath groupPath = grpcPath.toBuilder().method("").build();
+
+                final String pathOddrn = generate(grpcPath);
+                final String groupOddrn = generateService(groupPath);
+
                 if (span.getKind().equals(Span.SpanKind.SPAN_KIND_SERVER)) {
-                    final String pathOddrn = generate(grpcPath);
                     outputs.add(pathOddrn);
                     oddrns.add(
                         ServiceOddrns.builder()
                             .name(String.format("%s/%s", service.get(), method.get()))
                             .oddrn(pathOddrn)
+                            .groupOddrn(groupOddrn)
+                            .groupName(String.format("%s", service.get()))
+                            .groupType(DataEntityType.API_SERVICE)
                             .serviceType(DataEntityType.API_CALL)
                             .inputs(Set.of())
                             .outputs(Set.of(nameOddrn.getOddrn()))
@@ -70,7 +77,7 @@ public class GrpcSpanProcessor implements SpanProcessor {
                             .build()
                     );
                 } else if (span.getKind().equals(Span.SpanKind.SPAN_KIND_CLIENT)) {
-                    inputs.add(generate(grpcPath));
+                    inputs.add(pathOddrn);
                 }
             }
         }
@@ -81,6 +88,7 @@ public class GrpcSpanProcessor implements SpanProcessor {
                 .outputs(outputs)
                 .oddrn(nameOddrn.getOddrn())
                 .name(nameOddrn.getName())
+                .version(nameOddrn.getVersion())
                 .metadata(AnyValueUtil.toStringMap(keyValue))
                 .build()
         );
@@ -90,5 +98,10 @@ public class GrpcSpanProcessor implements SpanProcessor {
     @SneakyThrows
     private String generate(final OddrnPath path) {
         return generator.generate(path, "method");
+    }
+
+    @SneakyThrows
+    private String generateService(final OddrnPath path) {
+        return generator.generate(path, "service");
     }
 }

@@ -8,5 +8,6 @@ import lombok.Data;
 public class NameOddrn {
     private final String oddrn;
     private final String name;
-    private final String version;
+    @Builder.Default
+    private final String version = "unknown";
 }

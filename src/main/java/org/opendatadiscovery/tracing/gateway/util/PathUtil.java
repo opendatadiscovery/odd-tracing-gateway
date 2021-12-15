@@ -6,7 +6,7 @@ public class PathUtil {
 
     public static String replacePort(final String host) {
         final int pos = host.indexOf(":");
-        if (pos>0) {
+        if (pos > 0) {
             return host.substring(0, pos);
         } else {
             return host;

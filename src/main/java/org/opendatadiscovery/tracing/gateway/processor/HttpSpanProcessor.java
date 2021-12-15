@@ -64,13 +64,23 @@ public class HttpSpanProcessor implements SpanProcessor {
                             .method(method.get().toLowerCase())
                             .path(sanitizedPath)
                             .build();
+                        final String groupOddrn = generateHost(
+                            httpPath.toBuilder()
+                                .method("")
+                                .path("")
+                                .build()
+                        );
 
                         final String pathOddrn = generate(httpPath);
                         outputs.add(pathOddrn);
+
                         oddrns.add(
                             ServiceOddrns.builder()
                                 .name(String.format("%s%s", host.get(), sanitizedPath))
                                 .oddrn(pathOddrn)
+                                .groupOddrn(groupOddrn)
+                                .groupName(host.get())
+                                .groupType(DataEntityType.API_SERVICE)
                                 .serviceType(DataEntityType.API_CALL)
                                 .inputs(Set.of())
                                 .outputs(Set.of(nameOddrn.getOddrn()))
@@ -101,6 +111,12 @@ public class HttpSpanProcessor implements SpanProcessor {
                         .path(sanitizePath)
                         .build();
                     final String pathOddrn = generate(httpPath);
+                    final String groupOddrn = generateHost(
+                        httpPath.toBuilder()
+                            .method("")
+                            .path("")
+                            .build()
+                    );
 
                     inputs.add(pathOddrn);
 
@@ -112,6 +128,9 @@ public class HttpSpanProcessor implements SpanProcessor {
                                 .name(String.format("%s%s", url.get().getHost(), sanitizePath))
                                 .oddrn(pathOddrn)
                                 .serviceType(DataEntityType.API_CALL)
+                                .groupOddrn(groupOddrn)
+                                .groupType(DataEntityType.API_SERVICE)
+                                .groupName(url.get().getHost())
                                 .inputs(Set.of())
                                 .outputs(Set.of(nameOddrn.getOddrn()))
                                 .metadata(
@@ -134,6 +153,7 @@ public class HttpSpanProcessor implements SpanProcessor {
                 .outputs(outputs)
                 .oddrn(nameOddrn.getOddrn())
                 .name(nameOddrn.getName())
+                .version(nameOddrn.getVersion())
                 .metadata(AnyValueUtil.toStringMap(keyValue))
                 .build()
         );
@@ -144,6 +164,11 @@ public class HttpSpanProcessor implements SpanProcessor {
     @SneakyThrows
     private String generate(final OddrnPath path) {
         return generator.generate(path, "path");
+    }
+
+    @SneakyThrows
+    private String generateHost(final OddrnPath path) {
+        return generator.generate(path, "host");
     }
 
     @SneakyThrows

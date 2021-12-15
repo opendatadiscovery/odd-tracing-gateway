@@ -17,9 +17,14 @@ public class ServiceOddrns {
     @Builder.Default
     private final String name = "";
     @Builder.Default
+    private final String version = "unknown";
+    @Builder.Default
     private final Instant updatedAt = Instant.now();
     @Builder.Default
     private final Map<String, String> metadata = Map.of();
     private final Set<String> inputs;
     private final Set<String> outputs;
+    private final String groupOddrn;
+    private final String groupName;
+    private final DataEntityType groupType;
 }
