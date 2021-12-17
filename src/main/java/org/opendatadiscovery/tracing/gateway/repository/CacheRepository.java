@@ -6,7 +6,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface CacheRepository {
-    Mono<ServiceOddrns> get(String service);
+    Mono<ServiceOddrns> get(String versionedOddrn);
 
     Flux<ServiceOddrns> getServices(OffsetDateTime changedSince);
 

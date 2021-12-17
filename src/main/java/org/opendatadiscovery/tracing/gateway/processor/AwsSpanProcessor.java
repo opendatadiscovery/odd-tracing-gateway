@@ -56,6 +56,7 @@ public class AwsSpanProcessor implements SpanProcessor {
                 .outputs(outputs)
                 .oddrn(service.getOddrn())
                 .name(service.getName())
+                .version(service.getVersion())
                 .metadata(AnyValueUtil.toStringMap(keyValue))
                 .build()
         );

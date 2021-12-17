@@ -67,6 +67,7 @@ public class KafkaSpanProcessor implements SpanProcessor {
                 .outputs(outputs)
                 .oddrn(nameOddrn.getOddrn())
                 .name(nameOddrn.getName())
+                .version(nameOddrn.getVersion())
                 .metadata(AnyValueUtil.toStringMap(keyValue))
                 .build()
         );

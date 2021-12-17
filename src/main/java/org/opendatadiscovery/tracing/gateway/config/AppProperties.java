@@ -11,4 +11,5 @@ public class AppProperties {
     private String oddrn;
     private int defaultNamePriority = 0;
     private String kafkaServers = "unknown";
+    private boolean exposeLatestVersion = true;
 }

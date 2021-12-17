@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opendatadiscovery.adapter.contract.model.DataEntityType;
@@ -16,7 +15,6 @@ import org.opendatadiscovery.tracing.gateway.model.ServiceOddrns;
 import org.springframework.data.redis.core.ReactiveHashOperations;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.core.ReactiveSetOperations;
-import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,17 +30,25 @@ public class CacheRepositoryImpl implements CacheRepository {
     private static final String NAME_KEY = "SYSTEM_ODD_NAME";
     private static final String TYPE_KEY = "SYSTEM_ODD_TYPE";
     private static final String VERSION_KEY = "SYSTEM_ODD_VERSION";
+    private static final String VERSION_SPLITTER = ":::";
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
 
-    public Mono<ServiceOddrns> get(final String oddrn) {
+    public Mono<ServiceOddrns> get(final String versionedOddrn) {
         final ReactiveSetOperations<String, String> ops = redisTemplate.opsForSet();
         final ReactiveHashOperations<String, String, String> opsHash = redisTemplate.opsForHash();
-        final ReactiveValueOperations<String, String> valueOps = redisTemplate.opsForValue();
 
-        final String oddrnKey = String.format("%s-%s", PREFIX, oddrn);
+        final String oddrnKey = String.format("%s-%s", PREFIX, versionedOddrn);
         final String inputKey = String.format("%s-%s", oddrnKey, INPUT_KEY);
         final String outputKey = String.format("%s-%s", oddrnKey, OUTPUT_KEY);
+
+        final String[] versionedParts = versionedOddrn.split(VERSION_SPLITTER);
+        if (versionedParts.length < 2) {
+            // To skip old version updates
+            return Mono.empty();
+        }
+        final String oddrn = versionedParts[0];
+        final String version = versionedParts[1];
 
         return ops.members(inputKey)
             .collectList()
@@ -50,6 +56,7 @@ public class CacheRepositoryImpl implements CacheRepository {
                 ops.members(outputKey).collectList(),
                 (l1, l2) -> ServiceOddrns.builder()
                     .oddrn(oddrn)
+                    .version(version)
                     .inputs(new HashSet<>(l1))
                     .outputs(new HashSet<>(l2))
                     .build()
@@ -66,14 +73,11 @@ public class CacheRepositoryImpl implements CacheRepository {
         String version = "unknown";
 
         for (final Map.Entry<String, String> entry : entries) {
-            if (entry.getKey().equals(NAME_KEY)) {
-                name = entry.getValue();
-            } else if (entry.getKey().equals(TYPE_KEY)) {
-                type = DataEntityType.fromValue(entry.getValue());
-            } else if (entry.getKey().equals(VERSION_KEY)) {
-                version = entry.getValue();
-            } else {
-                metadata.put(entry.getKey(), entry.getValue());
+            switch (entry.getKey()) {
+                case NAME_KEY -> name = entry.getValue();
+                case TYPE_KEY -> type = DataEntityType.fromValue(entry.getValue());
+                case VERSION_KEY -> version = entry.getValue();
+                default -> metadata.put(entry.getKey(), entry.getValue());
             }
         }
 
@@ -100,9 +104,9 @@ public class CacheRepositoryImpl implements CacheRepository {
     public Mono<ServiceOddrns> add(final ServiceOddrns oddrns) {
         final ReactiveSetOperations<String, String> ops = redisTemplate.opsForSet();
         final ReactiveHashOperations<String, String, String> hashOps = redisTemplate.opsForHash();
-        final ReactiveValueOperations<String, String> valueOps = redisTemplate.opsForValue();
 
-        final String oddrnKey = String.format("%s-%s", PREFIX, oddrns.getOddrn());
+        final String oddrnKey = String.format("%s-%s%s%s",
+            PREFIX, oddrns.getOddrn(), VERSION_SPLITTER, oddrns.getVersion());
         final String inputKey = String.format("%s-%s", oddrnKey, INPUT_KEY);
         final String outputKey = String.format("%s-%s", oddrnKey, OUTPUT_KEY);
 
@@ -122,6 +126,7 @@ public class CacheRepositoryImpl implements CacheRepository {
                         .oddrn(oddrns.getGroupOddrn())
                         .inputs(Set.of(oddrns.getOddrn()))
                         .outputs(Set.of())
+                        .version(oddrns.getVersion())
                         .build()
                 ).map(s -> true)
                 : Mono.just(false);
@@ -139,7 +144,7 @@ public class CacheRepositoryImpl implements CacheRepository {
         ).collectList().flatMap(r -> {
                 log.info("results: {}", r);
                 return r.stream().anyMatch(l -> l > 0)
-                    ? updateService(oddrns.getOddrn()).map(res -> oddrns)
+                    ? updateService(oddrns.getOddrn(), oddrns.getVersion()).map(res -> oddrns)
                     : Mono.just(oddrns);
             }
         ).flatMap(o -> {
@@ -150,8 +155,9 @@ public class CacheRepositoryImpl implements CacheRepository {
         });
     }
 
-    private Mono<Boolean> updateService(final String service) {
+    private Mono<Boolean> updateService(final String service, final String version) {
         final ReactiveHashOperations<String, String, String> ops = redisTemplate.opsForHash();
-        return ops.put(UPDATES_KEY, service, Long.valueOf(Instant.now().toEpochMilli()).toString());
+        final String versionedService = String.format("%s%s%s", service, VERSION_SPLITTER, version);
+        return ops.put(UPDATES_KEY, versionedService, Long.valueOf(Instant.now().toEpochMilli()).toString());
     }
 }

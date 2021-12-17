@@ -4,8 +4,11 @@ import java.net.URI;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +33,27 @@ public class ServiceMapper {
         log.info("oddrns: {}", oddrns);
         final DataEntityList dataEntityList = new DataEntityList();
         dataEntityList.setDataSourceOddrn(properties.getOddrn());
-        dataEntityList.setItems(
-            oddrns.stream().map(this::map).collect(Collectors.toList())
+
+        final Map<String, List<DataEntity>> byOddrn = oddrns.stream().map(this::map).collect(
+            Collectors.groupingBy(
+                DataEntity::getOddrn
+            )
         );
+
+        if (properties.isExposeLatestVersion()) {
+            dataEntityList.setItems(
+                byOddrn.values()
+                    .stream()
+                    .filter(entities -> entities.size() > 0)
+                    .map(entities -> entities.stream().max(Comparator.comparing(DataEntity::getUpdatedAt)).get()
+                    ).collect(Collectors.toList())
+            );
+        } else {
+            dataEntityList.setItems(
+                byOddrn.values().stream().flatMap(Collection::stream).collect(Collectors.toList())
+            );
+        }
+
         return dataEntityList;
     }
 
