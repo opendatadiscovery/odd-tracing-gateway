@@ -1,8 +1,13 @@
 package org.opendatadiscovery.tracing.gateway.util;
 
+import com.google.common.net.InetAddresses;
 import org.apache.commons.lang.math.NumberUtils;
 
 public class PathUtil {
+
+    public static boolean isIp(final String host) {
+        return InetAddresses.isInetAddress(host);
+    }
 
     public static String replacePort(final String host) {
         final int pos = host.indexOf(":");

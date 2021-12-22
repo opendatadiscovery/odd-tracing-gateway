@@ -46,6 +46,26 @@ public class HttpSpanProcessorTest {
                             withString("http.target", "/ingestion/datasources/active/?field=value"),
                             withInt("net.peer.port", 55286)
                         )
+                    ).build(),
+                Span.newBuilder()
+                    .setKind(Span.SpanKind.SPAN_KIND_SERVER)
+                    .setName("/ingestion/datasources/active")
+                    .setStatus(Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_UNSET).build())
+                    .addAllAttributes(
+                        List.of(
+                            withString("http.scheme", "http"),
+                            withString("http.host", "10.7.154.205:8080"),
+                            withInt("thread.id", 32),
+                            withString("net.peer.ip", "10.7.154.205"),
+                            withString("thread.name", "reactor-http-epoll-3"),
+                            withString("http.method", "GET"),
+                            withInt("http.status_code", 200),
+                            withString("net.peer.name", "10-7-154-205.odd-platform-puller.demo.svc.cluster.local"),
+                            withString("http.user_agent", "ReactorNetty/1.0.8"),
+                            withString("http.flavor", "1.1"),
+                            withString("http.target", "/actuator/health"),
+                            withInt("net.peer.port", 55286)
+                        )
                     ).build()
             ), Map.of(), NameOddrn.builder().oddrn("//microservice/1").name("").build()
         ).stream().map(s -> s.toBuilder().updatedAt(now).build()).collect(Collectors.toSet());
@@ -145,6 +165,22 @@ public class HttpSpanProcessorTest {
                     .addAllAttributes(
                         List.of(
                             withString("http.url", "http://odd-platform:80/ingestion/datasources/active"),
+                            withInt("net.peer.port", 80),
+                            withString("thread.name", "reactor-http-epoll-3"),
+                            withInt("http.status_code", 200),
+                            withString("http.method", "GET"),
+                            withInt("thread.id", 32),
+                            withString("net.transport", "ip_tcp"),
+                            withString("net.peer.name", "odd-platform")
+                        )
+                    ).build(),
+                Span.newBuilder()
+                    .setKind(Span.SpanKind.SPAN_KIND_CLIENT)
+                    .setName("HTTP GET")
+                    .setStatus(Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_UNSET).build())
+                    .addAllAttributes(
+                        List.of(
+                            withString("http.url", "http://10.7.154.205:8080/actuator/health"),
                             withInt("net.peer.port", 80),
                             withString("thread.name", "reactor-http-epoll-3"),
                             withInt("http.status_code", 200),

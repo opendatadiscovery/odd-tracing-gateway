@@ -56,8 +56,11 @@ public class HttpSpanProcessor implements SpanProcessor {
                 final Optional<String> path =
                     Optional.ofNullable(attributes.get("http.target")).map(AnyValue::getStringValue);
                 if (host.isPresent() && path.isPresent() && method.isPresent()) {
-                    if (httpProperties.getStaticPrefix().isEmpty()
-                        || !path.get().startsWith(httpProperties.getStaticPrefix())) {
+                    if (
+                        (httpProperties.getStaticPrefix().isEmpty()
+                            || !path.get().startsWith(httpProperties.getStaticPrefix()))
+                            && (!httpProperties.isExcludeIps() || !PathUtil.isIp(host.get()))
+                    ) {
                         final String sanitizedPath = PathUtil.sanitize(path.get());
                         final HttpServicePath httpPath = HttpServicePath.builder()
                             .host(host.get())
@@ -104,6 +107,10 @@ public class HttpSpanProcessor implements SpanProcessor {
                 final Optional<String> method =
                     Optional.ofNullable(attributes.get("http.method")).map(AnyValue::getStringValue);
                 if (url.isPresent() && method.isPresent()) {
+                    if (httpProperties.isExcludeIps() && PathUtil.isIp(url.get().getHost())) {
+                        continue;
+                    }
+
                     final String sanitizePath = PathUtil.sanitize(url.get().getPath());
                     final HttpServicePath httpPath = HttpServicePath.builder()
                         .host(url.get().getHost())

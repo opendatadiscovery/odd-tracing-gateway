@@ -9,4 +9,5 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "app.http")
 public class HttpProperties {
     private String staticPrefix = "/static/";
+    private boolean excludeIps = true;
 }
